@@ -72,26 +72,27 @@ export function PriceChart() {
     };
   }, []);
 
-  // Reset chart when selected pair changes
-  useEffect(() => {
-    if (seriesRef.current) {
-      seriesRef.current.setData([]);
-      lastTimeRef.current = 0;
-    }
-  }, [selectedPair]);
-
-  // Feed new fills into the chart
+  // Reseed chart whenever pair or accumulated fills change
   useEffect(() => {
     const series = seriesRef.current;
-    if (!series || pairFills.length === 0) return;
+    if (!series) return;
 
-    const newest = pairFills[0];
-    const point  = fillToPoint(newest);
-    if (!point) return;
+    // Build a time-ordered (ascending) set of unique-time points
+    const raw = pairFills
+      .map(fillToPoint)
+      .filter(Boolean)
+      .sort((a, b) => a.time - b.time);
 
-    const t = Math.max(point.time, lastTimeRef.current + 1);
-    series.update({ time: t, value: point.value });
-    lastTimeRef.current = t;
+    const deduped = [];
+    let lastT = 0;
+    for (const p of raw) {
+      const t = Math.max(p.time, lastT + 1);
+      deduped.push({ time: t, value: p.value });
+      lastT = t;
+    }
+
+    series.setData(deduped);
+    lastTimeRef.current = lastT;
   }, [pairFills]);
 
   return (

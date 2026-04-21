@@ -8,12 +8,11 @@ import { Dashboard } from './components/Dashboard';
 const WS_URL = import.meta.env.VITE_WS_URL ?? `ws://${window.location.host}`;
 
 export function App() {
-  const store = useWsStore.getState();
-
   useEffect(() => {
-    const disconnect = createSocketConnection(WS_URL, store);
+    // useWsStore.getState() gives stable action refs — safe to call inside effect
+    const disconnect = createSocketConnection(WS_URL, useWsStore.getState());
     return disconnect;
-  }, [store]);
+  }, []);
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', bgcolor: 'background.default' }}>
