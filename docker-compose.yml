@@ -1,0 +1,57 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: xrpl_monitor_pg
+    environment:
+      POSTGRES_USER: xrpl
+      POSTGRES_PASSWORD: xrplpass
+      POSTGRES_DB: xrpl_monitor
+    ports:
+      - "5434:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./server/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U xrpl -d xrpl_monitor"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis/redis-stack-server:latest
+    container_name: xrpl_monitor_redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  server:
+    build: ./server
+    container_name: xrpl_monitor_server
+    ports:
+      - "3001:3001"
+    environment:
+      - XRPL_NET=mainnet
+      - PGHOST=postgres
+      - PGPORT=5432
+      - PGUSER=xrpl
+      - PGPASSWORD=xrplpass
+      - PGDATABASE=xrpl_monitor
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PORT=3001
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pg_data:
+  redis_data:
