@@ -2,12 +2,7 @@ import { Box, Typography, Skeleton } from '@mui/material';
 import { AreaChart, Area, ResponsiveContainer, Tooltip } from 'recharts';
 import { useOhlcv } from '../hooks/useOhlcv';
 import { useWsStore } from '../store/useWsStore';
-
-function shortPair(pairKey) {
-  const [left, right] = pairKey.split('~');
-  const sym = (s) => s.split('|')[0];
-  return `${sym(left)}/${sym(right ?? '')}`;
-}
+import { tokenLabel } from '../utils/pairs';
 
 function fmtPrice(n) {
   if (n == null || isNaN(n)) return '—';
@@ -94,7 +89,7 @@ export function PairCard({ pairKey, window, windowVolume, issuerCount = 1 }) {
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
         <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
           <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: 'primary.main', fontFamily: 'JetBrains Mono', letterSpacing: 1 }}>
-            {shortPair(pairKey)}
+            {tokenLabel(pairKey)}
           </Typography>
           {issuerCount > 1 && (
             <Typography sx={{ fontSize: '0.6rem', color: 'text.disabled', fontFamily: 'JetBrains Mono' }}>

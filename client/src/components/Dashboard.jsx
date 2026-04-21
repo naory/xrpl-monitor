@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Box, Paper } from '@mui/material';
+import { Box, Paper, ToggleButton, ToggleButtonGroup } from '@mui/material';
 import { Leaderboard }  from './Leaderboard';
 import { PairGrid }     from './PairGrid';
 import { OrderBook }    from './OrderBook';
@@ -14,6 +14,7 @@ const panel = {
 
 export function Dashboard() {
   const [window, setWindow] = useState('1h');
+  const [mode, setMode]     = useState('iou'); // 'iou' | 'mpt'
 
   return (
     <Box
@@ -29,11 +30,26 @@ export function Dashboard() {
     >
       {/* Row 1 */}
       <Paper sx={{ ...panel, gridRow: 1, gridColumn: 1 }}>
-        <Leaderboard window={window} onWindowChange={setWindow} />
+        <Leaderboard window={window} onWindowChange={setWindow} mode={mode} />
       </Paper>
 
       <Paper sx={{ ...panel, gridRow: 1, gridColumn: 2, overflow: 'hidden' }}>
-        <PairGrid window={window} />
+        {/* Mode toggle sits above the grid */}
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
+          <ToggleButtonGroup
+            value={mode}
+            exclusive
+            size="small"
+            onChange={(_, v) => v && setMode(v)}
+            sx={{ height: 24 }}
+          >
+            <ToggleButton value="iou" sx={{ fontSize: '0.65rem', px: 1.5, py: 0 }}>IOUs</ToggleButton>
+            <ToggleButton value="mpt" sx={{ fontSize: '0.65rem', px: 1.5, py: 0 }}>MPTs</ToggleButton>
+          </ToggleButtonGroup>
+        </Box>
+        <Box sx={{ height: 'calc(100% - 32px)', overflow: 'hidden' }}>
+          <PairGrid window={window} mode={mode} />
+        </Box>
       </Paper>
 
       <Paper sx={{ ...panel, gridRow: 1, gridColumn: 3 }}>

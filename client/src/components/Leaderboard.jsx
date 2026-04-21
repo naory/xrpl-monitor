@@ -34,12 +34,12 @@ const CustomTooltip = ({ active, payload }) => {
   );
 };
 
-export function Leaderboard({ window, onWindowChange }) {
+export function Leaderboard({ window, onWindowChange, mode }) {
   const { data, isLoading, isError } = useStats(window);
   const setSelectedPair = useWsStore((s) => s.setSelectedPair);
   const selectedPair    = useWsStore((s) => s.selectedPair);
 
-  const chartData = aggregateByToken(data?.volumeLeaderboard ?? []).map((row) => ({
+  const chartData = aggregateByToken(data?.volumeLeaderboard ?? [], mode).map((row) => ({
     ...row,
     label: row.issuerCount > 1 ? `${row.label} ×${row.issuerCount}` : row.label,
   }));

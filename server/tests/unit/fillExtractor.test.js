@@ -1,4 +1,4 @@
-const { extractFills, buildPairKey, dropsToXrp, hexToIso } = require('../../src/ingest/fillExtractor');
+const { extractFills, buildPairKey, dropsToXrp, hexToIso, isMptAmount, MPT_PREFIX } = require('../../src/ingest/fillExtractor');
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -364,5 +364,69 @@ describe('extractFills — Payment transaction', () => {
     });
     const fills = extractFills(ev);
     expect(fills).toHaveLength(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// MPT amounts
+// ---------------------------------------------------------------------------
+
+const MPT_ID = '000004C463C52827307480341125DA0577DEFC38';
+const MPT_AMT = { mpt_issuance_id: MPT_ID, value: '1000000' };
+
+describe('isMptAmount', () => {
+  it('returns true for an MPT amount object', () => {
+    expect(isMptAmount(MPT_AMT)).toBe(true);
+  });
+
+  it('returns false for an IOU amount object', () => {
+    expect(isMptAmount(USD_AMT)).toBe(false);
+  });
+
+  it('returns false for an XRP drops string', () => {
+    expect(isMptAmount(XRP_DROPS)).toBe(false);
+  });
+});
+
+describe('extractFills — MPT amounts', () => {
+  it('stores MPT currency with MPT: prefix', () => {
+    const ev = makeEvent({
+      nodes: [deletedOffer({ gets: MPT_AMT, pays: XRP_DROPS })],
+    });
+    const fills = extractFills(ev);
+    expect(fills).toHaveLength(1);
+    expect(fills[0].getsCurrency).toBe(MPT_PREFIX + MPT_ID);
+    expect(fills[0].getsIssuer).toBeNull();
+    expect(fills[0].getsValue).toBe('1000000');
+  });
+
+  it('pairKey contains MPT: prefix and is stable regardless of side order', () => {
+    const a = buildPairKey(
+      { currency: MPT_PREFIX + MPT_ID, issuer: null },
+      { currency: 'XRP', issuer: null },
+    );
+    const b = buildPairKey(
+      { currency: 'XRP', issuer: null },
+      { currency: MPT_PREFIX + MPT_ID, issuer: null },
+    );
+    expect(a).toBe(b);
+    expect(a).toContain(MPT_PREFIX + MPT_ID);
+  });
+
+  it('extracts correct partial-fill difference for MPT integer amounts', () => {
+    const ev = makeEvent({
+      nodes: [{
+        ModifiedNode: {
+          LedgerEntryType: 'Offer',
+          // Maker offered 1M MPT for 5 XRP; after fill: 400K MPT and 2 XRP remaining
+          FinalFields:    { Account: 'rMaker', TakerGets: { ...MPT_AMT, value: '400000' }, TakerPays: '2000000' },
+          PreviousFields: { TakerGets: { ...MPT_AMT, value: '1000000' }, TakerPays: '5000000' },
+        },
+      }],
+    });
+    const fills = extractFills(ev);
+    expect(fills).toHaveLength(1);
+    expect(fills[0].getsValue).toBe('600000');   // 1000000 - 400000 MPT consumed
+    expect(fills[0].paysValue).toBe('3.000000'); // (5000000 - 2000000) drops → 3 XRP paid
   });
 });

@@ -4,9 +4,9 @@ import { useStats } from '../hooks/useStats';
 import { aggregateByToken } from '../utils/pairs';
 import { PairCard } from './PairCard';
 
-export function PairGrid({ window }) {
+export function PairGrid({ window, mode }) {
   const { data, isLoading, isError } = useStats(window);
-  const pairs = aggregateByToken(data?.volumeLeaderboard ?? []);
+  const pairs = aggregateByToken(data?.volumeLeaderboard ?? [], mode);
 
   if (isLoading && !pairs.length) {
     return (

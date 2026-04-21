@@ -4,10 +4,10 @@ CREATE TABLE IF NOT EXISTS trade_fills (
     ledger_time   TIMESTAMP NOT NULL,
     tx_hash       VARCHAR(64) NOT NULL,
     account       VARCHAR(64) NOT NULL,
-    gets_currency VARCHAR(42) NOT NULL,
+    gets_currency VARCHAR(64) NOT NULL,
     gets_issuer   VARCHAR(64),
     gets_value    NUMERIC(38, 18) NOT NULL,
-    pays_currency VARCHAR(42) NOT NULL,
+    pays_currency VARCHAR(64) NOT NULL,
     pays_issuer   VARCHAR(64),
     pays_value    NUMERIC(38, 18) NOT NULL,
     price         NUMERIC(38, 18) GENERATED ALWAYS AS (

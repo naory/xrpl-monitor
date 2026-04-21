@@ -1,6 +1,14 @@
 const RIPPLE_EPOCH = 946684800; // Unix seconds for 2000-01-01T00:00:00Z
 const FILL_TX_TYPES = new Set(['OfferCreate', 'Payment']);
 
+// MPT issuance IDs are 40-char hex strings prefixed with 'MPT:' so they are
+// distinguishable from 40-char IOU hex currency codes in storage and queries.
+const MPT_PREFIX = 'MPT:';
+
+function isMptAmount(raw) {
+  return raw !== null && typeof raw === 'object' && typeof raw.mpt_issuance_id === 'string';
+}
+
 function hexToIso(hex) {
   if (hex === null || hex === undefined) return null;
   if (hex === 'XRP' || hex.length === 3) return hex;
@@ -19,7 +27,11 @@ function dropsToXrp(drops) {
 }
 
 function buildPairKey(gets, pays) {
-  const norm = ({ currency, issuer }) => `${hexToIso(currency)}|${issuer ?? ''}`;
+  // MPT currencies are already normalised ('MPT:...'); IOU currencies go through hexToIso.
+  const norm = ({ currency, issuer }) => {
+    const c = currency.startsWith(MPT_PREFIX) ? currency : hexToIso(currency);
+    return `${c}|${issuer ?? ''}`;
+  };
   const a = norm(gets);
   const b = norm(pays);
   return a < b ? `${a}~${b}` : `${b}~${a}`;
@@ -28,6 +40,9 @@ function buildPairKey(gets, pays) {
 function parseAmount(raw) {
   if (typeof raw === 'string') {
     return { currency: 'XRP', issuer: null, value: dropsToXrp(raw) };
+  }
+  if (isMptAmount(raw)) {
+    return { currency: MPT_PREFIX + raw.mpt_issuance_id, issuer: null, value: raw.value };
   }
   return {
     currency: hexToIso(raw.currency),
@@ -41,7 +56,11 @@ function subtractRawAmounts(prev, final) {
     // XRP in drops — use BigInt to avoid floating-point error
     return dropsToXrp(String(BigInt(prev) - BigInt(final)));
   }
-  // Token amount — XRPL values are decimal strings, float arithmetic is acceptable
+  if (isMptAmount(prev)) {
+    // MPT values are unsigned integers — safe to use BigInt
+    return String(BigInt(prev.value) - BigInt(final.value));
+  }
+  // IOU token — XRPL values are decimal strings, float arithmetic is acceptable
   const diff = parseFloat(prev.value) - parseFloat(final.value);
   return String(parseFloat(diff.toPrecision(15)));
 }
@@ -103,4 +122,4 @@ function extractFills(event) {
   return fills;
 }
 
-module.exports = { extractFills, buildPairKey, dropsToXrp, hexToIso };
+module.exports = { extractFills, buildPairKey, dropsToXrp, hexToIso, isMptAmount, MPT_PREFIX };
