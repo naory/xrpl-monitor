@@ -84,14 +84,13 @@ function createXrplConnection({ onTransaction, onLedgerClosed, onStateChange }) 
   }
 
   // Fetch current order book without maintaining a subscription.
-  async function requestOrderBook(takerGets, takerPays, limit = 20) {
+  async function requestOrderBook(takerGets, takerPays, { limit = 20, timeoutMs = 3000 } = {}) {
     if (!client?.isConnected()) throw new Error('XRPL client not connected');
-    const response = await client.request({
-      command: 'book_offers',
-      taker_gets: takerGets,
-      taker_pays: takerPays,
-      limit,
-    });
+    const request = client.request({ command: 'book_offers', taker_gets: takerGets, taker_pays: takerPays, limit });
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('requestOrderBook timed out')), timeoutMs)
+    );
+    const response = await Promise.race([request, timeout]);
     return response.result?.offers ?? [];
   }
 
