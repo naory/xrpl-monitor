@@ -1,17 +1,32 @@
-import { Box, Typography } from '@mui/material';
+import { Box, Typography, CircularProgress } from '@mui/material';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useWsStore } from '../store/useWsStore';
+import { useStats } from '../hooks/useStats';
 import { PairCard } from './PairCard';
 
-export function PairGrid() {
-  const topK = useWsStore((s) => s.topK);
+export function PairGrid({ window }) {
+  const { data, isLoading, isError } = useStats(window);
+  const pairs = data?.volumeLeaderboard ?? [];
 
-  if (!topK.length) {
+  if (isLoading && !pairs.length) {
     return (
       <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Typography variant="caption" color="text.secondary">
-          Waiting for trades…
-        </Typography>
+        <CircularProgress size={24} />
+      </Box>
+    );
+  }
+
+  if (isError) {
+    return (
+      <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Typography variant="caption" color="error">Failed to load pairs</Typography>
+      </Box>
+    );
+  }
+
+  if (!pairs.length) {
+    return (
+      <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Typography variant="caption" color="text.secondary">No trades yet…</Typography>
       </Box>
     );
   }
@@ -29,7 +44,7 @@ export function PairGrid() {
       }}
     >
       <AnimatePresence initial={false}>
-        {topK.map((pair) => (
+        {pairs.map((pair) => (
           <motion.div
             key={pair.pairKey}
             layout

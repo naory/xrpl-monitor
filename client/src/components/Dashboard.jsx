@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Box, Paper } from '@mui/material';
 import { Leaderboard }  from './Leaderboard';
 import { PairGrid }     from './PairGrid';
@@ -12,6 +13,8 @@ const panel = {
 };
 
 export function Dashboard() {
+  const [window, setWindow] = useState('1h');
+
   return (
     <Box
       sx={{
@@ -26,11 +29,11 @@ export function Dashboard() {
     >
       {/* Row 1 */}
       <Paper sx={{ ...panel, gridRow: 1, gridColumn: 1 }}>
-        <Leaderboard />
+        <Leaderboard window={window} onWindowChange={setWindow} />
       </Paper>
 
       <Paper sx={{ ...panel, gridRow: 1, gridColumn: 2, overflow: 'hidden' }}>
-        <PairGrid />
+        <PairGrid window={window} />
       </Paper>
 
       <Paper sx={{ ...panel, gridRow: 1, gridColumn: 3 }}>

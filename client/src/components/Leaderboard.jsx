@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Box, Typography, ToggleButton, ToggleButtonGroup, CircularProgress } from '@mui/material';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
@@ -28,8 +27,7 @@ const CustomTooltip = ({ active, payload }) => {
   );
 };
 
-export function Leaderboard() {
-  const [window, setWindow] = useState('1h');
+export function Leaderboard({ window, onWindowChange }) {
   const { data, isLoading, isError } = useStats(window);
   const setSelectedPair = useWsStore((s) => s.setSelectedPair);
   const selectedPair    = useWsStore((s) => s.selectedPair);
@@ -49,7 +47,7 @@ export function Leaderboard() {
           value={window}
           exclusive
           size="small"
-          onChange={(_, v) => v && setWindow(v)}
+          onChange={(_, v) => v && onWindowChange(v)}
           sx={{ height: 24 }}
         >
           {WINDOWS.map((w) => (
