@@ -1,13 +1,24 @@
 const { extractFills } = require('./fillExtractor');
 const { writeFills } = require('../db/fills');
-const { incrementPairs } = require('../redis/topk');
+const { incrementPairs, getTopK } = require('../redis/topk');
+const { buildRebalancePlan, applyRebalancePlan } = require('./subscriptionManager');
 
-function createLedgerProcessor({ pool, redis, state }) {
+function createLedgerProcessor({ pool, redis, state, hysteresis, pairRegistry, xrplClient }) {
+  const subscribedKeys = new Set();
+
   async function handleTransaction(event) {
     const fills = extractFills(event);
     if (!fills.length) return;
 
     state.lastLedgerIndex = event.ledger_index;
+
+    // Register pair details for every fill seen so subscriptionManager can subscribe later
+    for (const f of fills) {
+      pairRegistry.register(f.pairKey, {
+        getsCurrency: f.getsCurrency, getsIssuer: f.getsIssuer,
+        paysCurrency: f.paysCurrency, paysIssuer: f.paysIssuer,
+      });
+    }
 
     try {
       await writeFills(pool, fills);
@@ -23,12 +34,24 @@ function createLedgerProcessor({ pool, redis, state }) {
     }
   }
 
-  function handleLedgerClosed(event) {
-    state.currentLedger = event.ledger_index;
-    console.log(`[LEDGER] Closed: ${event.ledger_index} (${event.txn_count ?? 0} txns)`);
+  async function handleLedgerClosed({ ledgerIndex, txnCount }) {
+    state.currentLedger = ledgerIndex;
+    console.log(`[LEDGER] Closed: ${ledgerIndex} (${txnCount} txns)`);
+
+    try {
+      const topKPairs = await getTopK(redis);
+      const { toSubscribe, toUnsubscribe } = hysteresis.update(topKPairs.map((p) => p.pairKey));
+      const plan = buildRebalancePlan({ topKPairs, subscribedKeys, toSubscribe, toUnsubscribe });
+
+      if (plan.subscribe.length || plan.unsubscribe.length) {
+        await applyRebalancePlan({ plan, subscribedKeys, pairRegistry, xrplClient, redis });
+      }
+    } catch (err) {
+      console.error('[REBALANCE] Error during ledger rebalance:', err.message);
+    }
   }
 
-  return { handleTransaction, handleLedgerClosed };
+  return { handleTransaction, handleLedgerClosed, subscribedKeys };
 }
 
 module.exports = { createLedgerProcessor };
