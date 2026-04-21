@@ -41,7 +41,8 @@ function createWebSocketServer({ httpServer, redis }) {
   async function close() {
     await subscriber.unsubscribe(...SUBSCRIBED_CHANNELS).catch(() => {});
     await subscriber.quit().catch(() => {});
-    wss.close();
+    for (const client of wss.clients) client.terminate();
+    await new Promise((resolve) => wss.close(resolve));
   }
 
   return { wss, close };

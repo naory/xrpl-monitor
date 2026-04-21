@@ -36,13 +36,6 @@ function buildTopKChangedMessage(topK) {
   };
 }
 
-function buildBookUpdateMessage(pairKey, book) {
-  return {
-    type: 'book:update',
-    data: { pairKey, ...book },
-  };
-}
-
 async function publishFill(redis, fill) {
   const msg = JSON.stringify(buildFillMessage(fill));
   await redis.publish(CHANNELS.FILLS, msg);
@@ -53,17 +46,10 @@ async function publishTopKChanged(redis, topK) {
   await redis.publish(CHANNELS.TOPK_CHANGED, msg);
 }
 
-async function publishBookUpdate(redis, pairKey, book) {
-  const msg = JSON.stringify(buildBookUpdateMessage(pairKey, book));
-  await redis.publish(CHANNELS.BOOK(pairKey), msg);
-}
-
 module.exports = {
   CHANNELS,
   buildFillMessage,
   buildTopKChangedMessage,
-  buildBookUpdateMessage,
   publishFill,
   publishTopKChanged,
-  publishBookUpdate,
 };

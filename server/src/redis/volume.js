@@ -13,8 +13,8 @@ function computeCutoff(windowName, now = Date.now()) {
   return now - size;
 }
 
-function encodeVolumeEvent(pairKey, volume, timestamp = Date.now()) {
-  return JSON.stringify({ p: pairKey, v: volume, t: timestamp });
+function encodeVolumeEvent(pairKey, volume, txHash, account, timestamp = Date.now()) {
+  return JSON.stringify({ p: pairKey, v: volume, tx: txHash, a: account, t: timestamp });
 }
 
 function decodeVolumeEvent(str) {
@@ -41,7 +41,7 @@ async function recordVolume(redis, fills, now = Date.now()) {
     for (const fill of fills) {
       const volume = parseFloat(fill.getsValue) || 0;
       if (volume <= 0) continue;
-      const event = encodeVolumeEvent(fill.pairKey, fill.getsValue, now);
+      const event = encodeVolumeEvent(fill.pairKey, fill.getsValue, fill.txHash, fill.account, now);
       pipeline.zadd(LOG_KEY(window), now, event);
       pipeline.zadd(RANK_KEY(window), 'INCR', volume, fill.pairKey);
     }

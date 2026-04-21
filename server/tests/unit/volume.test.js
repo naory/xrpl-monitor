@@ -25,7 +25,7 @@ describe('computeCutoff', () => {
 describe('encodeVolumeEvent / decodeVolumeEvent', () => {
   it('round-trips a simple entry', () => {
     const pairKey = 'XRP|~USD|rIssuer1';
-    const encoded = encodeVolumeEvent(pairKey, '10.5', 1234567890000);
+    const encoded = encodeVolumeEvent(pairKey, '10.5', 'TXHASH01', 'rAccount1', 1234567890000);
     const decoded = decodeVolumeEvent(encoded);
     expect(decoded.pairKey).toBe(pairKey);
     expect(decoded.volume).toBe('10.5');
@@ -34,9 +34,16 @@ describe('encodeVolumeEvent / decodeVolumeEvent', () => {
 
   it('handles pairKey with special characters', () => {
     const pairKey = 'USD|rIssuerA~EUR|rIssuerB';
-    const encoded = encodeVolumeEvent(pairKey, '0.000001', 9999999);
+    const encoded = encodeVolumeEvent(pairKey, '0.000001', 'TXHASH02', 'rAccount2', 9999999);
     const decoded = decodeVolumeEvent(encoded);
     expect(decoded.pairKey).toBe(pairKey);
+  });
+
+  it('encodes fills from the same pair/value/time uniquely when tx or account differs', () => {
+    const pairKey = 'XRP|~USD|rIssuer1';
+    const e1 = encodeVolumeEvent(pairKey, '5', 'TX01', 'rMaker1', 1000);
+    const e2 = encodeVolumeEvent(pairKey, '5', 'TX01', 'rMaker2', 1000);
+    expect(e1).not.toBe(e2);
   });
 
   it('decodeVolumeEvent returns null for malformed input', () => {
