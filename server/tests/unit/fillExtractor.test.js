@@ -129,6 +129,17 @@ describe('buildPairKey', () => {
     const b = buildPairKey({ currency: 'USD', issuer: 'rIssuer1' }, { currency: 'XRP', issuer: null });
     expect(a).toBe(b);
   });
+
+  it('uses a separator that cannot appear in currency codes or issuer addresses', () => {
+    const key = buildPairKey(
+      { currency: 'USD', issuer: 'rIssuer1' },
+      { currency: 'XRP', issuer: null }
+    );
+    // Key must contain | as field separator and ~ as pair separator — not /
+    expect(key).toContain('|');
+    expect(key).toContain('~');
+    expect(key).not.toContain('/');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -224,6 +235,26 @@ describe('extractFills — partial fill (ModifiedNode)', () => {
     expect(f.fillType).toBe('partial');
     expect(f.getsValue).toBe('60');     // 100 - 40
     expect(f.paysValue).toBe('2.000000'); // (5000000 - 3000000) drops → XRP
+  });
+
+  it('handles token/token partial fill correctly (no XRP drops)', () => {
+    const ev = makeEvent({
+      nodes: [
+        modifiedOffer({
+          gets: { currency: 'USD', issuer: 'rIssuerA', value: '40' },
+          pays: { currency: 'EUR', issuer: 'rIssuerB', value: '36' },
+          prevGets: { currency: 'USD', issuer: 'rIssuerA', value: '100' },
+          prevPays: { currency: 'EUR', issuer: 'rIssuerB', value: '90' },
+        }),
+      ],
+    });
+    const fills = extractFills(ev);
+    expect(fills).toHaveLength(1);
+    expect(fills[0].getsCurrency).toBe('USD');
+    expect(fills[0].paysCurrency).toBe('EUR');
+    expect(parseFloat(fills[0].getsValue)).toBeCloseTo(60);  // 100 - 40
+    expect(parseFloat(fills[0].paysValue)).toBeCloseTo(54);  // 90 - 36
+    expect(fills[0].fillType).toBe('partial');
   });
 
   it('ignores ModifiedNode offers with no PreviousFields', () => {

@@ -19,10 +19,10 @@ function dropsToXrp(drops) {
 }
 
 function buildPairKey(gets, pays) {
-  const norm = ({ currency, issuer }) => `${hexToIso(currency)}:${issuer ?? ''}`;
+  const norm = ({ currency, issuer }) => `${hexToIso(currency)}|${issuer ?? ''}`;
   const a = norm(gets);
   const b = norm(pays);
-  return a < b ? `${a}/${b}` : `${b}/${a}`;
+  return a < b ? `${a}~${b}` : `${b}~${a}`;
 }
 
 function parseAmount(raw) {
@@ -36,10 +36,12 @@ function parseAmount(raw) {
   };
 }
 
-function subtractAmounts(prev, final) {
-  if (typeof prev === 'string' && typeof final === 'string') {
+function subtractRawAmounts(prev, final) {
+  if (typeof prev === 'string') {
+    // XRP in drops — use BigInt to avoid floating-point error
     return dropsToXrp(String(BigInt(prev) - BigInt(final)));
   }
+  // Token amount — XRPL values are decimal strings, float arithmetic is acceptable
   const diff = parseFloat(prev.value) - parseFloat(final.value);
   return String(parseFloat(diff.toPrecision(15)));
 }
@@ -48,24 +50,18 @@ function fillFromNode(node, fillType, txHash, ledgerIndex, ledgerTime) {
   const fields = node.FinalFields;
   if (!fields?.Account || !fields?.TakerGets || !fields?.TakerPays) return null;
 
-  let getsRaw, paysRaw;
+  let gets, pays;
 
-  if (fillType === 'partial') {
+  if (fillType === 'full') {
+    gets = parseAmount(fields.TakerGets);
+    pays = parseAmount(fields.TakerPays);
+  } else {
     const prev = node.PreviousFields;
     if (!prev?.TakerGets || !prev?.TakerPays) return null;
-    getsRaw = { value: subtractAmounts(prev.TakerGets, fields.TakerGets), raw: prev.TakerGets };
-    paysRaw = { value: subtractAmounts(prev.TakerPays, fields.TakerPays), raw: prev.TakerPays };
-  } else {
-    getsRaw = { value: null, raw: fields.TakerGets };
-    paysRaw = { value: null, raw: fields.TakerPays };
-  }
-
-  const gets = parseAmount(getsRaw.raw);
-  const pays = parseAmount(paysRaw.raw);
-
-  if (fillType === 'partial') {
-    gets.value = getsRaw.value;
-    pays.value = paysRaw.value;
+    gets = parseAmount(fields.TakerGets);
+    pays = parseAmount(fields.TakerPays);
+    gets.value = subtractRawAmounts(prev.TakerGets, fields.TakerGets);
+    pays.value = subtractRawAmounts(prev.TakerPays, fields.TakerPays);
   }
 
   return {
