@@ -17,8 +17,8 @@ export function fetchOrderBook(pairKey) {
   return api.get(`/book/${encodeURIComponent(pairKey)}`).then((r) => r.data);
 }
 
-export function fetchOhlcv({ pairKey, bucketSeconds = 30, limit = 60 }) {
+export function fetchOhlcv({ pairKey, window }) {
   return api
-    .get('/fills/ohlcv', { params: { pairKey, bucketSeconds, limit } })
+    .get('/fills/ohlcv', { params: { pairKey, window } })
     .then((r) => r.data);
 }

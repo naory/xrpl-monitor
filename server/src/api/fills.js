@@ -57,10 +57,20 @@ function createFillsRouter({ pool, redis }) {
     }
   });
 
+  // Maps a named window to sensible bucket granularity and a from-timestamp.
+  const OHLCV_WINDOWS = {
+    '10m': { bucketSeconds: 10,  ms: 10 * 60 * 1000 },
+    '1h':  { bucketSeconds: 60,  ms: 60 * 60 * 1000 },
+    '24h': { bucketSeconds: 300, ms: 24 * 60 * 60 * 1000 },
+  };
+
   router.get('/ohlcv', async (req, res) => {
-    const { pairKey, bucketSeconds, limit } = req.query;
+    const { pairKey, window, bucketSeconds, limit } = req.query;
     if (!pairKey) {
       return res.status(400).json({ error: 'pairKey query parameter is required' });
+    }
+    if (window && !OHLCV_WINDOWS[window]) {
+      return res.status(400).json({ error: `Unknown window '${window}'. Valid: ${Object.keys(OHLCV_WINDOWS).join(', ')}` });
     }
 
     let parsed;
@@ -70,19 +80,21 @@ function createFillsRouter({ pool, redis }) {
       return res.status(400).json({ error: 'Invalid pairKey format' });
     }
 
-    const bs = bucketSeconds ? parseInt(bucketSeconds, 10) : undefined;
-    const lim = limit ? parseInt(limit, 10) : undefined;
+    const preset = window ? OHLCV_WINDOWS[window] : null;
+    const bs  = bucketSeconds ? parseInt(bucketSeconds, 10) : (preset?.bucketSeconds ?? 30);
+    const lim = limit        ? parseInt(limit, 10)         : 120;
+    const from = preset ? new Date(Date.now() - preset.ms) : undefined;
 
-    if (bs !== undefined && (!Number.isFinite(bs) || bs < 1)) {
+    if (!Number.isFinite(bs) || bs < 1) {
       return res.status(400).json({ error: 'bucketSeconds must be a positive integer' });
     }
-    if (lim !== undefined && (!Number.isFinite(lim) || lim < 1 || lim > 1000)) {
+    if (!Number.isFinite(lim) || lim < 1 || lim > 1000) {
       return res.status(400).json({ error: 'limit must be between 1 and 1000' });
     }
 
     try {
-      const rows = await getOhlcv(pool, { ...parsed, bucketSeconds: bs, limit: lim });
-      res.json({ pairKey, bucketSeconds: bs ?? 30, candles: rows });
+      const rows = await getOhlcv(pool, { ...parsed, bucketSeconds: bs, limit: lim, from });
+      res.json({ pairKey, window: window ?? null, bucketSeconds: bs, candles: rows });
     } catch (err) {
       console.error('[FILLS/OHLCV] Error:', err.message);
       res.status(500).json({ error: 'Internal server error' });

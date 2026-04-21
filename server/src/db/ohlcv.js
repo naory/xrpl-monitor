@@ -1,8 +1,3 @@
-/**
- * parsePairKey: 'EUR|rIssuerA~USD|rIssuerB' → { getCurrency, getIssuer, payCurrency, payIssuer }
- * Canonical order is lexicographic, so getCurrency/getIssuer is always the lex-smaller side.
- * Callers that need to know which side is "base" should use the pair key to look up trade direction.
- */
 function parsePairKey(pairKey) {
   if (!pairKey || !pairKey.includes('~')) throw new Error(`malformed pairKey: ${pairKey}`);
   const [left, right] = pairKey.split('~');
@@ -26,17 +21,16 @@ function parsePairKey(pairKey) {
 /**
  * Build a parameterised OHLCV query for a single trading pair.
  *
- * Fills can be stored in either direction depending on which side was the
- * DeletedNode/ModifiedNode.  We union both directions so every trade is
- * represented exactly once, then compute OHLCV over (pays/gets) as the
- * canonical price expressed as "how much of the pay currency per gets unit".
+ * Volume is always expressed in the XRP side of the pair so values are
+ * comparable across windows.  For token/token pairs, getsValue is used.
+ *
+ * Price is canonical: pays/gets for direction-A fills, gets/pays for
+ * direction-B fills, both yielding "payCurrency per getCurrency unit".
  */
-function buildOhlcvQuery({ getCurrency, getIssuer, payCurrency, payIssuer, bucketSeconds = 30, limit = 60 } = {}) {
+function buildOhlcvQuery({ getCurrency, getIssuer, payCurrency, payIssuer, bucketSeconds = 30, limit = 60, from } = {}) {
   const params = [];
   const p = (v) => { params.push(v); return `$${params.length}`; };
 
-  // direction A: gets=getCurrency/getIssuer, pays=payCurrency/payIssuer
-  // direction B: gets=payCurrency/payIssuer, pays=getCurrency/getIssuer
   const gC = p(getCurrency);
   const gI = p(getIssuer);
   const pC = p(payCurrency);
@@ -44,12 +38,27 @@ function buildOhlcvQuery({ getCurrency, getIssuer, payCurrency, payIssuer, bucke
   const bs = p(bucketSeconds);
   const lim = p(limit);
 
+  // Determine which column holds XRP volume at query-build time.
+  // Direction A: gets=getCurrency, pays=payCurrency
+  //   XRP is gets → gets_value; XRP is pays → pays_value; neither → gets_value
+  const volA = getCurrency === 'XRP' ? 'CAST(gets_value AS NUMERIC)'
+             : payCurrency === 'XRP' ? 'CAST(pays_value AS NUMERIC)'
+             : 'CAST(gets_value AS NUMERIC)';
+
+  // Direction B: gets=payCurrency, pays=getCurrency
+  //   XRP is payCurrency (now gets) → gets_value; XRP is getCurrency (now pays) → pays_value
+  const volB = payCurrency === 'XRP' ? 'CAST(gets_value AS NUMERIC)'
+             : getCurrency === 'XRP' ? 'CAST(pays_value AS NUMERIC)'
+             : 'CAST(gets_value AS NUMERIC)';
+
+  const fromClause = from ? `AND ledger_time >= ${p(from)}` : '';
+
   const sql = `
 WITH fills_union AS (
   SELECT
     FLOOR(EXTRACT(EPOCH FROM ledger_time) / ${bs}) * ${bs} AS bucket_epoch,
-    CAST(pays_value AS NUMERIC) / CAST(gets_value AS NUMERIC) AS price,
-    CAST(gets_value AS NUMERIC) AS vol_gets,
+    CAST(pays_value AS NUMERIC) / NULLIF(CAST(gets_value AS NUMERIC), 0) AS price,
+    ${volA} AS xrp_vol,
     id
   FROM trade_fills
   WHERE
@@ -57,13 +66,15 @@ WITH fills_union AS (
     AND gets_issuer IS NOT DISTINCT FROM ${gI}
     AND pays_currency = ${pC}
     AND pays_issuer IS NOT DISTINCT FROM ${pI}
+    AND gets_value > 0 AND pays_value > 0
+    ${fromClause}
 
   UNION ALL
 
   SELECT
     FLOOR(EXTRACT(EPOCH FROM ledger_time) / ${bs}) * ${bs} AS bucket_epoch,
-    CAST(gets_value AS NUMERIC) / CAST(pays_value AS NUMERIC) AS price,
-    CAST(pays_value AS NUMERIC) AS vol_gets,
+    CAST(gets_value AS NUMERIC) / NULLIF(CAST(pays_value AS NUMERIC), 0) AS price,
+    ${volB} AS xrp_vol,
     id
   FROM trade_fills
   WHERE
@@ -71,6 +82,8 @@ WITH fills_union AS (
     AND gets_issuer IS NOT DISTINCT FROM ${pI}
     AND pays_currency = ${gC}
     AND pays_issuer IS NOT DISTINCT FROM ${gI}
+    AND gets_value > 0 AND pays_value > 0
+    ${fromClause}
 ),
 buckets AS (
   SELECT
@@ -80,7 +93,7 @@ buckets AS (
     MAX(price) OVER (PARTITION BY bucket_epoch)                           AS high,
     MIN(price) OVER (PARTITION BY bucket_epoch)                           AS low,
     FIRST_VALUE(price) OVER (PARTITION BY bucket_epoch ORDER BY id DESC) AS close,
-    SUM(vol_gets) OVER (PARTITION BY bucket_epoch)                       AS volume,
+    SUM(xrp_vol) OVER (PARTITION BY bucket_epoch)                        AS volume,
     COUNT(*) OVER (PARTITION BY bucket_epoch)                            AS trade_count
   FROM fills_union
 )

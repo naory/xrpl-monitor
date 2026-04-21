@@ -9,12 +9,21 @@ function shortPair(pairKey) {
   return `${sym(left)}/${sym(right ?? '')}`;
 }
 
-function fmt(n, decimals = 6) {
+function fmtPrice(n) {
   if (n == null || isNaN(n)) return '—';
   const f = parseFloat(n);
   if (f === 0) return '0';
   if (Math.abs(f) >= 1000) return f.toLocaleString(undefined, { maximumFractionDigits: 2 });
-  return f.toPrecision(decimals).replace(/\.?0+$/, '');
+  return f.toPrecision(5).replace(/\.?0+$/, '');
+}
+
+function fmtVolume(n) {
+  if (n == null || isNaN(n)) return '—';
+  const f = parseFloat(n);
+  if (f >= 1e9)  return `${(f / 1e9).toFixed(2)}B`;
+  if (f >= 1e6)  return `${(f / 1e6).toFixed(2)}M`;
+  if (f >= 1000) return `${(f / 1000).toFixed(1)}K`;
+  return f.toFixed(2);
 }
 
 const SparkTooltip = ({ active, payload }) => {
@@ -23,21 +32,21 @@ const SparkTooltip = ({ active, payload }) => {
   return (
     <Box sx={{ bgcolor: 'background.default', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 1, px: 1, py: 0.5 }}>
       <Typography variant="caption" display="block" sx={{ fontFamily: 'JetBrains Mono', fontSize: '0.65rem' }}>
-        O {fmt(d.open)} H {fmt(d.high)}<br />L {fmt(d.low)} C {fmt(d.close)}
+        O {fmtPrice(d.open)} H {fmtPrice(d.high)}<br />L {fmtPrice(d.low)} C {fmtPrice(d.close)}
       </Typography>
     </Box>
   );
 };
 
-export function PairCard({ pairKey }) {
-  const { data: candles, isLoading } = useOhlcv(pairKey);
+export function PairCard({ pairKey, window, windowVolume }) {
+  const { data: candles, isLoading } = useOhlcv(pairKey, { window });
   const liveBuckets  = useWsStore((s) => s.liveBuckets[pairKey]);
   const setSelected  = useWsStore((s) => s.setSelectedPair);
   const selectedPair = useWsStore((s) => s.selectedPair);
   const isSelected   = selectedPair === pairKey;
 
-  // Merge server candles with live buckets (live takes precedence for most-recent bucket)
-  const serverCandles = candles ? [...candles].reverse() : []; // server returns DESC, we want ASC
+  // Merge server candles (DESC from API) with live WS buckets
+  const serverCandles = candles ? [...candles].reverse() : [];
   const liveCandles = liveBuckets
     ? Object.entries(liveBuckets)
         .sort(([a], [b]) => Number(a) - Number(b))
@@ -47,18 +56,22 @@ export function PairCard({ pairKey }) {
         }))
     : [];
 
-  // Merge: deduplicate by bucket_time, prefer live for overlapping buckets
   const liveKeys = new Set(liveCandles.map((c) => c.bucket_time));
   const merged = [
     ...serverCandles.filter((c) => !liveKeys.has(c.bucket_time)),
     ...liveCandles,
-  ].slice(-60);
+  ].slice(-120);
 
-  const last   = merged[merged.length - 1];
-  const first  = merged[0];
-  const pct    = last && first ? ((last.close - first.open) / Math.abs(first.open || 1)) * 100 : null;
+  const last  = merged[merged.length - 1];
+  const first = merged[0];
+  const pct   = last && first && first.open
+    ? ((last.close - first.open) / Math.abs(first.open)) * 100
+    : null;
   const pctPos = pct != null && pct >= 0;
   const color  = pctPos ? '#00e676' : '#ff4081';
+
+  // Total trades across window
+  const totalTrades = merged.reduce((s, c) => s + (Number(c.trade_count) || 0), 0);
 
   return (
     <Box
@@ -77,6 +90,7 @@ export function PairCard({ pairKey }) {
         minWidth: 0,
       }}
     >
+      {/* Header: pair name + % change */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
         <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: 'primary.main', fontFamily: 'JetBrains Mono', letterSpacing: 1 }}>
           {shortPair(pairKey)}
@@ -88,6 +102,7 @@ export function PairCard({ pairKey }) {
         )}
       </Box>
 
+      {/* Sparkline */}
       {isLoading && !liveCandles.length ? (
         <Skeleton variant="rectangular" height={40} sx={{ borderRadius: 1 }} />
       ) : (
@@ -96,7 +111,7 @@ export function PairCard({ pairKey }) {
             <AreaChart data={merged} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id={`grad-${pairKey}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={color} stopOpacity={0.3} />
+                  <stop offset="5%"  stopColor={color} stopOpacity={0.3} />
                   <stop offset="95%" stopColor={color} stopOpacity={0} />
                 </linearGradient>
               </defs>
@@ -115,12 +130,13 @@ export function PairCard({ pairKey }) {
         </Box>
       )}
 
-      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+      {/* Footer: last price + window volume in XRP */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
         <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', fontFamily: 'JetBrains Mono' }}>
-          {last ? fmt(last.close) : '—'}
+          {last ? fmtPrice(last.close) : '—'} XRP
         </Typography>
         <Typography sx={{ fontSize: '0.65rem', color: 'text.disabled', fontFamily: 'JetBrains Mono' }}>
-          {last ? `vol ${fmt(last.volume, 4)} · ${last.trade_count}tx` : ''}
+          {windowVolume != null ? `${fmtVolume(windowVolume)} XRP` : ''}{totalTrades ? ` · ${totalTrades}tx` : ''}
         </Typography>
       </Box>
     </Box>

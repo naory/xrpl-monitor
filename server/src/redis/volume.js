@@ -34,14 +34,22 @@ function detectTopKChange(previous, current) {
   return previous.some((p, i) => p.pairKey !== current[i]?.pairKey);
 }
 
+function xrpSideVolume(fill) {
+  // Always accumulate the XRP side so leaderboard volumes are in XRP.
+  // For token/token pairs fall back to getsValue.
+  if (fill.getsCurrency === 'XRP') return { raw: fill.getsValue, parsed: parseFloat(fill.getsValue) || 0 };
+  if (fill.paysCurrency === 'XRP') return { raw: fill.paysValue, parsed: parseFloat(fill.paysValue) || 0 };
+  return { raw: fill.getsValue, parsed: parseFloat(fill.getsValue) || 0 };
+}
+
 async function recordVolume(redis, fills, now = Date.now()) {
   if (!fills.length) return;
   const pipeline = redis.pipeline();
   for (const window of Object.keys(WINDOWS)) {
     for (const fill of fills) {
-      const volume = parseFloat(fill.getsValue) || 0;
+      const { raw, parsed: volume } = xrpSideVolume(fill);
       if (volume <= 0) continue;
-      const event = encodeVolumeEvent(fill.pairKey, fill.getsValue, fill.txHash, fill.account, now);
+      const event = encodeVolumeEvent(fill.pairKey, raw, fill.txHash, fill.account, now);
       pipeline.zadd(LOG_KEY(window), now, event);
       pipeline.zadd(RANK_KEY(window), 'INCR', volume, fill.pairKey);
     }

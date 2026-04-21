@@ -1,12 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchOhlcv } from '../api/http';
 
-export function useOhlcv(pairKey, { bucketSeconds = 30, limit = 60 } = {}) {
+export function useOhlcv(pairKey, { window } = {}) {
   return useQuery({
-    queryKey: ['ohlcv', pairKey, bucketSeconds, limit],
-    queryFn:  () => fetchOhlcv({ pairKey, bucketSeconds, limit }),
+    queryKey: ['ohlcv', pairKey, window],
+    queryFn:  () => fetchOhlcv({ pairKey, window }),
     enabled:  !!pairKey,
-    refetchInterval: bucketSeconds * 1000,
+    refetchInterval: 30_000,
     staleTime: 0,
     select: (data) => data.candles ?? [],
   });

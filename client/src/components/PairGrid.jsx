@@ -53,7 +53,7 @@ export function PairGrid({ window }) {
             exit={{ opacity: 0, scale: 0.88 }}
             transition={{ duration: 0.2 }}
           >
-            <PairCard pairKey={pair.pairKey} />
+            <PairCard pairKey={pair.pairKey} window={window} windowVolume={pair.volume} />
           </motion.div>
         ))}
       </AnimatePresence>
