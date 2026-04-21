@@ -4,14 +4,16 @@ import {
 } from 'recharts';
 import { useStats } from '../hooks/useStats';
 import { useWsStore } from '../store/useWsStore';
+import { aggregateByToken } from '../utils/pairs';
 
 const WINDOWS = ['10m', '1h', '24h'];
 const PAIR_COLORS = ['#00e5ff', '#7c4dff', '#00e676', '#ffab40', '#ff4081', '#64ffda', '#ea80fc', '#82b1ff', '#ccff90', '#ff6d00'];
 
-function shortPair(pairKey) {
-  const parts = pairKey.split('~');
-  const side = (s) => s.split('|')[0];
-  return `${side(parts[0])}/${side(parts[1] ?? '')}`;
+function fmtVol(n) {
+  if (n >= 1e9)  return `${(n / 1e9).toFixed(2)}B`;
+  if (n >= 1e6)  return `${(n / 1e6).toFixed(2)}M`;
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
+  return n.toFixed(2);
 }
 
 const CustomTooltip = ({ active, payload }) => {
@@ -19,10 +21,15 @@ const CustomTooltip = ({ active, payload }) => {
   const d = payload[0].payload;
   return (
     <Box sx={{ bgcolor: 'background.default', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 1, px: 1.5, py: 1 }}>
-      <Typography variant="caption" display="block" color="primary.main" fontWeight={700}>{d.pairKey}</Typography>
+      <Typography variant="caption" display="block" color="primary.main" fontWeight={700}>{d.label}</Typography>
       <Typography variant="caption" display="block" color="text.secondary">
-        Volume: {parseFloat(d.volume).toFixed(2)}
+        Vol: {fmtVol(d.volume)} XRP
       </Typography>
+      {d.issuerCount > 1 && (
+        <Typography variant="caption" display="block" color="text.disabled">
+          {d.issuerCount} issuers combined
+        </Typography>
+      )}
     </Box>
   );
 };
@@ -32,9 +39,9 @@ export function Leaderboard({ window, onWindowChange }) {
   const setSelectedPair = useWsStore((s) => s.setSelectedPair);
   const selectedPair    = useWsStore((s) => s.selectedPair);
 
-  const chartData = (data?.volumeLeaderboard ?? []).map((p) => ({
-    ...p,
-    label: shortPair(p.pairKey),
+  const chartData = aggregateByToken(data?.volumeLeaderboard ?? []).map((row) => ({
+    ...row,
+    label: row.issuerCount > 1 ? `${row.label} ×${row.issuerCount}` : row.label,
   }));
 
   return (
@@ -73,7 +80,7 @@ export function Leaderboard({ window, onWindowChange }) {
             <BarChart
               data={chartData}
               layout="vertical"
-              margin={{ top: 0, right: 12, left: 0, bottom: 0 }}
+              margin={{ top: 0, right: 12, left: -8, bottom: 0 }}
               onClick={({ activePayload }) => {
                 if (activePayload?.[0]) setSelectedPair(activePayload[0].payload.pairKey);
               }}
@@ -82,8 +89,8 @@ export function Leaderboard({ window, onWindowChange }) {
               <YAxis
                 type="category"
                 dataKey="label"
-                width={56}
-                tick={{ fill: '#9fa8da', fontSize: 11, fontFamily: 'JetBrains Mono' }}
+                width={90}
+                tick={{ fill: '#9fa8da', fontSize: 10, fontFamily: 'JetBrains Mono' }}
                 axisLine={false}
                 tickLine={false}
               />

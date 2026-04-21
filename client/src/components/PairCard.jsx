@@ -38,7 +38,7 @@ const SparkTooltip = ({ active, payload }) => {
   );
 };
 
-export function PairCard({ pairKey, window, windowVolume }) {
+export function PairCard({ pairKey, window, windowVolume, issuerCount = 1 }) {
   const { data: candles, isLoading } = useOhlcv(pairKey, { window });
   const liveBuckets  = useWsStore((s) => s.liveBuckets[pairKey]);
   const setSelected  = useWsStore((s) => s.setSelectedPair);
@@ -90,11 +90,18 @@ export function PairCard({ pairKey, window, windowVolume }) {
         minWidth: 0,
       }}
     >
-      {/* Header: pair name + % change */}
+      {/* Header: pair name + issuer badge + % change */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-        <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: 'primary.main', fontFamily: 'JetBrains Mono', letterSpacing: 1 }}>
-          {shortPair(pairKey)}
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
+          <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: 'primary.main', fontFamily: 'JetBrains Mono', letterSpacing: 1 }}>
+            {shortPair(pairKey)}
+          </Typography>
+          {issuerCount > 1 && (
+            <Typography sx={{ fontSize: '0.6rem', color: 'text.disabled', fontFamily: 'JetBrains Mono' }}>
+              ×{issuerCount}
+            </Typography>
+          )}
+        </Box>
         {pct != null && (
           <Typography sx={{ fontSize: '0.65rem', color, fontFamily: 'JetBrains Mono', fontWeight: 700 }}>
             {pctPos ? '+' : ''}{pct.toFixed(2)}%

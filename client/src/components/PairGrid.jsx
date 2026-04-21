@@ -1,11 +1,12 @@
 import { Box, Typography, CircularProgress } from '@mui/material';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useStats } from '../hooks/useStats';
+import { aggregateByToken } from '../utils/pairs';
 import { PairCard } from './PairCard';
 
 export function PairGrid({ window }) {
   const { data, isLoading, isError } = useStats(window);
-  const pairs = data?.volumeLeaderboard ?? [];
+  const pairs = aggregateByToken(data?.volumeLeaderboard ?? []);
 
   if (isLoading && !pairs.length) {
     return (
@@ -53,7 +54,7 @@ export function PairGrid({ window }) {
             exit={{ opacity: 0, scale: 0.88 }}
             transition={{ duration: 0.2 }}
           >
-            <PairCard pairKey={pair.pairKey} window={window} windowVolume={pair.volume} />
+            <PairCard pairKey={pair.pairKey} window={window} windowVolume={pair.volume} issuerCount={pair.issuerCount} />
           </motion.div>
         ))}
       </AnimatePresence>
