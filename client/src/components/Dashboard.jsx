@@ -1,6 +1,6 @@
 import { Box, Paper } from '@mui/material';
 import { Leaderboard }  from './Leaderboard';
-import { FillStream }   from './FillStream';
+import { PairGrid }     from './PairGrid';
 import { OrderBook }    from './OrderBook';
 import { PriceChart }   from './PriceChart';
 
@@ -29,8 +29,8 @@ export function Dashboard() {
         <Leaderboard />
       </Paper>
 
-      <Paper sx={{ ...panel, gridRow: 1, gridColumn: 2 }}>
-        <FillStream />
+      <Paper sx={{ ...panel, gridRow: 1, gridColumn: 2, overflow: 'hidden' }}>
+        <PairGrid />
       </Paper>
 
       <Paper sx={{ ...panel, gridRow: 1, gridColumn: 3 }}>

@@ -34,7 +34,7 @@ services:
     build: ./server
     container_name: xrpl_monitor_server
     ports:
-      - "3001:3001"
+      - "3002:3001"
     environment:
       - XRPL_NET=mainnet
       - PGHOST=postgres

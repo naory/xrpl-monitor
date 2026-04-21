@@ -1,6 +1,7 @@
 const { Router }                             = require('express');
 const { getFills, getFillCount, clampLimit, MAX_LIMIT } = require('../db/fillQueries');
 const { getVolumeLeaderboard, WINDOWS }      = require('../redis/volume');
+const { parsePairKey, getOhlcv }             = require('../db/ohlcv');
 
 function createFillsRouter({ pool, redis }) {
   const router = Router();
@@ -15,7 +16,7 @@ function createFillsRouter({ pool, redis }) {
     }
 
     try {
-      const rows = await getFills(pool, {
+      const { rows, hasMore } = await getFills(pool, {
         account:     req.query.account     || undefined,
         getCurrency: req.query.getCurrency || undefined,
         payCurrency: req.query.payCurrency || undefined,
@@ -25,8 +26,7 @@ function createFillsRouter({ pool, redis }) {
         cursor:      req.query.cursor      || undefined,
       });
 
-      const limit      = clampLimit(req.query.limit);
-      const nextCursor = rows.length === limit ? rows[rows.length - 1].id : null;
+      const nextCursor = hasMore ? rows[rows.length - 1].id : null;
 
       res.json({ fills: rows, nextCursor });
     } catch (err) {
@@ -53,6 +53,38 @@ function createFillsRouter({ pool, redis }) {
       res.json({ window, volumeLeaderboard, totalFills });
     } catch (err) {
       console.error('[FILLS/STATS] Error:', err.message);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  router.get('/ohlcv', async (req, res) => {
+    const { pairKey, bucketSeconds, limit } = req.query;
+    if (!pairKey) {
+      return res.status(400).json({ error: 'pairKey query parameter is required' });
+    }
+
+    let parsed;
+    try {
+      parsed = parsePairKey(pairKey);
+    } catch {
+      return res.status(400).json({ error: 'Invalid pairKey format' });
+    }
+
+    const bs = bucketSeconds ? parseInt(bucketSeconds, 10) : undefined;
+    const lim = limit ? parseInt(limit, 10) : undefined;
+
+    if (bs !== undefined && (!Number.isFinite(bs) || bs < 1)) {
+      return res.status(400).json({ error: 'bucketSeconds must be a positive integer' });
+    }
+    if (lim !== undefined && (!Number.isFinite(lim) || lim < 1 || lim > 1000)) {
+      return res.status(400).json({ error: 'limit must be between 1 and 1000' });
+    }
+
+    try {
+      const rows = await getOhlcv(pool, { ...parsed, bucketSeconds: bs, limit: lim });
+      res.json({ pairKey, bucketSeconds: bs ?? 30, candles: rows });
+    } catch (err) {
+      console.error('[FILLS/OHLCV] Error:', err.message);
       res.status(500).json({ error: 'Internal server error' });
     }
   });

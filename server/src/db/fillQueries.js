@@ -51,13 +51,17 @@ function buildFillsQuery({ account, getCurrency, payCurrency, from, to, limit, c
     LIMIT ${param(limitVal)}
   `;
 
-  return { sql, params };
+  return { sql, params, limitVal };
 }
 
 async function getFills(pool, filters) {
-  const { sql, params } = buildFillsQuery(filters);
-  const { rows } = await pool.query(sql, params);
-  return rows;
+  const { sql, params, limitVal } = buildFillsQuery(filters);
+  // Fetch one extra row to determine if a next page exists without COUNT(*).
+  const extraParams = [...params];
+  extraParams[extraParams.length - 1] = limitVal + 1;
+  const { rows } = await pool.query(sql, extraParams);
+  const hasMore = rows.length > limitVal;
+  return { rows: hasMore ? rows.slice(0, limitVal) : rows, hasMore };
 }
 
 async function getFillCount(pool) {
