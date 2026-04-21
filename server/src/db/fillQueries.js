@@ -61,8 +61,8 @@ async function getFills(pool, filters) {
 }
 
 async function getFillCount(pool) {
-  const { rows } = await pool.query('SELECT COUNT(*)::int AS total FROM trade_fills');
-  return rows[0].total;
+  const { rows } = await pool.query('SELECT COUNT(*) AS total FROM trade_fills');
+  return parseInt(rows[0].total, 10);
 }
 
 module.exports = { clampLimit, buildFillsQuery, getFills, getFillCount, MAX_LIMIT };
