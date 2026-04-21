@@ -1,5 +1,6 @@
 const DEFAULT_PROMOTE_THRESHOLD = 3;
 const DEFAULT_DEMOTE_THRESHOLD  = 3;
+const MAX_CONSECUTIVE_OUT = 50; // evict unpromoted pairs that have been absent this long
 
 class Hysteresis {
   constructor({ promoteThreshold = DEFAULT_PROMOTE_THRESHOLD, demoteThreshold = DEFAULT_DEMOTE_THRESHOLD } = {}) {
@@ -42,6 +43,13 @@ class Hysteresis {
     for (const key of inTopK) {
       if (!this._state.has(key)) {
         this._state.set(key, { consecutiveIn: 1, consecutiveOut: 0, subscribed: false });
+      }
+    }
+
+    // Evict unpromoted pairs that have been absent too long to avoid unbounded state growth
+    for (const [key, s] of this._state) {
+      if (!s.subscribed && s.consecutiveOut > MAX_CONSECUTIVE_OUT) {
+        this._state.delete(key);
       }
     }
 

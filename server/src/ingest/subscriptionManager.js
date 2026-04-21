@@ -5,8 +5,9 @@ function buildRebalancePlan({ topKPairs, subscribedKeys, toSubscribe, toUnsubscr
   };
 }
 
+const { setOrderBook, deleteOrderBook } = require('../redis/orderbook');
+
 async function applyRebalancePlan({ plan, subscribedKeys, pairRegistry, xrplClient, redis }) {
-  const { setOrderBook } = require('../redis/orderbook');
 
   for (const pairKey of plan.unsubscribe) {
     const fmt = pairRegistry.toXrplFormat(pairKey);
@@ -18,6 +19,7 @@ async function applyRebalancePlan({ plan, subscribedKeys, pairRegistry, xrplClie
       }
     }
     subscribedKeys.delete(pairKey);
+    await deleteOrderBook(redis, pairKey).catch(() => {});
     console.log(`[SUBS] Unsubscribed: ${pairKey}`);
   }
 

@@ -60,6 +60,13 @@ afterAll(async () => {
 });
 
 describe('GET /book', () => {
+  beforeEach(async () => {
+    if (!redisAvailable) return;
+    const pairKey = buildPairKey({ currency: 'XRP', issuer: null }, { currency: 'USD', issuer: 'rIssuer1' });
+    await redis.del(`book:${pairKey}`);
+    mockXrplClient.requestOrderBook.mockClear();
+  });
+
   it('returns 400 when required query params are missing', async () => {
     if (!redisAvailable) return;
     const app = makeApp(mockXrplClient);
