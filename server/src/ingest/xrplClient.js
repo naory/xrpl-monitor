@@ -11,6 +11,15 @@ function resolveEndpoint() {
   return XRPL_ENDPOINTS[net] ?? XRPL_ENDPOINTS.mainnet;
 }
 
+// Normalise raw XRPL ledger close event to a stable internal shape (FF-5).
+function normaliseLedgerClose(event) {
+  return {
+    ledgerIndex: event.ledger_index,
+    txnCount:    event.txn_count ?? 0,
+    ledgerTime:  event.ledger_time ?? null,
+  };
+}
+
 function createXrplConnection({ onTransaction, onLedgerClosed, onStateChange }) {
   const url = resolveEndpoint();
   let client = null;
@@ -23,7 +32,7 @@ function createXrplConnection({ onTransaction, onLedgerClosed, onStateChange }) 
     client = new xrpl.Client(url);
 
     client.on('transaction', onTransaction);
-    client.on('ledgerClosed', onLedgerClosed);
+    client.on('ledgerClosed', (raw) => onLedgerClosed(normaliseLedgerClose(raw)));
     client.on('disconnected', () => {
       onStateChange({ connected: false });
       if (!stopped) scheduleReconnect();
@@ -52,6 +61,40 @@ function createXrplConnection({ onTransaction, onLedgerClosed, onStateChange }) 
     setTimeout(connect, reconnectDelay);
   }
 
+  // Subscribe to an order book and return the snapshot bids/asks.
+  async function subscribeOrderBook(takerGets, takerPays) {
+    if (!client?.isConnected()) throw new Error('XRPL client not connected');
+    const response = await client.request({
+      command: 'subscribe',
+      books: [{ taker_gets: takerGets, taker_pays: takerPays, snapshot: true, both: true }],
+    });
+    return {
+      bids:        response.result?.bids ?? [],
+      asks:        response.result?.asks ?? [],
+      ledgerIndex: response.result?.ledger_current_index ?? null,
+    };
+  }
+
+  async function unsubscribeOrderBook(takerGets, takerPays) {
+    if (!client?.isConnected()) return;
+    await client.request({
+      command: 'unsubscribe',
+      books: [{ taker_gets: takerGets, taker_pays: takerPays }],
+    });
+  }
+
+  // Fetch current order book without maintaining a subscription.
+  async function requestOrderBook(takerGets, takerPays, limit = 20) {
+    if (!client?.isConnected()) throw new Error('XRPL client not connected');
+    const response = await client.request({
+      command: 'book_offers',
+      taker_gets: takerGets,
+      taker_pays: takerPays,
+      limit,
+    });
+    return response.result?.offers ?? [];
+  }
+
   function isConnected() {
     return client?.isConnected() ?? false;
   }
@@ -61,7 +104,7 @@ function createXrplConnection({ onTransaction, onLedgerClosed, onStateChange }) 
     if (client?.isConnected()) await client.disconnect();
   }
 
-  return { connect, disconnect, isConnected };
+  return { connect, disconnect, isConnected, subscribeOrderBook, unsubscribeOrderBook, requestOrderBook };
 }
 
 module.exports = { createXrplConnection };
