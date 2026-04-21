@@ -83,11 +83,11 @@ function fillFromNode(node, fillType, txHash, ledgerIndex, ledgerTime) {
 function extractFills(event) {
   if (!event?.validated) return [];
   if (event.meta?.TransactionResult !== 'tesSUCCESS') return [];
-  if (!FILL_TX_TYPES.has(event.transaction?.TransactionType)) return [];
+  if (!FILL_TX_TYPES.has(event.tx_json?.TransactionType)) return [];
 
-  const txHash = event.transaction.hash;
+  const txHash = event.hash;
   const ledgerIndex = event.ledger_index;
-  const ledgerTime = new Date((event.transaction.date + RIPPLE_EPOCH) * 1000);
+  const ledgerTime = new Date((event.tx_json.date + RIPPLE_EPOCH) * 1000);
   const fills = [];
 
   for (const node of event.meta?.AffectedNodes ?? []) {

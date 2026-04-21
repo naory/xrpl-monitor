@@ -10,11 +10,11 @@ function makeEvent({ txType = 'OfferCreate', result = 'tesSUCCESS', nodes = [], 
   return {
     type: 'transaction',
     validated: true,
+    hash: 'DEADBEEF01',           // top-level, matches real xrpl event structure
     ledger_index: 90000000,
-    transaction: {
+    tx_json: {                    // xrpl package uses tx_json (not transaction)
       TransactionType: txType,
       Account: 'rSubmitter111',
-      hash: 'DEADBEEF01',
       date,
     },
     meta: {
@@ -145,6 +145,40 @@ describe('buildPairKey', () => {
 // ---------------------------------------------------------------------------
 // extractFills — guard conditions
 // ---------------------------------------------------------------------------
+
+describe('extractFills — xrpl event structure contract', () => {
+  it('reads TransactionType from tx_json (not transaction)', () => {
+    // Real xrpl package events use tx_json, not transaction.
+    // A fixture with the old wrong key must yield no fills.
+    const wrongShape = {
+      validated: true,
+      hash: 'BADHASH',
+      ledger_index: 1,
+      transaction: { TransactionType: 'OfferCreate', date: 800000000 }, // wrong key
+      meta: {
+        TransactionResult: 'tesSUCCESS',
+        AffectedNodes: [deletedOffer({ gets: USD_AMT, pays: XRP_DROPS })],
+      },
+    };
+    expect(extractFills(wrongShape)).toEqual([]);
+  });
+
+  it('reads hash from the event root (not tx_json.hash)', () => {
+    const ev = makeEvent({ nodes: [deletedOffer({ gets: USD_AMT, pays: XRP_DROPS })] });
+    const fills = extractFills(ev);
+    expect(fills[0].txHash).toBe('DEADBEEF01'); // from ev.hash
+  });
+
+  it('returns empty when event has tx_json but no hash at root', () => {
+    const ev = {
+      ...makeEvent({ nodes: [deletedOffer({ gets: USD_AMT, pays: XRP_DROPS })] }),
+      hash: undefined,
+    };
+    // hash is undefined so txHash is undefined — still extracts (hash is informational)
+    const fills = extractFills(ev);
+    expect(fills[0].txHash).toBeUndefined();
+  });
+});
 
 describe('extractFills — guard conditions', () => {
   it('returns empty array for a failed transaction', () => {

@@ -5,7 +5,8 @@ import { useWsStore } from './store/useWsStore';
 import { ConnectionStatus } from './components/ConnectionStatus';
 import { Dashboard } from './components/Dashboard';
 
-const WS_URL = import.meta.env.VITE_WS_URL ?? `ws://${window.location.host}`;
+const WS_URL = import.meta.env.VITE_WS_URL
+  ?? `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws`;
 
 export function App() {
   useEffect(() => {
