@@ -1,6 +1,7 @@
 const express = require('express');
 const { createHealthRouter } = require('./health');
-const { createBookRouter } = require('./book');
+const { createBookRouter }   = require('./book');
+const { createFillsRouter }  = require('./fills');
 
 function createApp({ pool, redis, state, xrplClient, pairRegistry }) {
   const app = express();
@@ -8,6 +9,7 @@ function createApp({ pool, redis, state, xrplClient, pairRegistry }) {
 
   app.use('/health', createHealthRouter({ state, pool, redis }));
   app.use('/book',   createBookRouter({ redis, xrplClient, pairRegistry }));
+  app.use('/fills',  createFillsRouter({ pool, redis }));
 
   return app;
 }
