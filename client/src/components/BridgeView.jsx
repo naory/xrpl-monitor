@@ -26,8 +26,8 @@ function ringPositions(currencies) {
   });
 }
 
-function animateLeg(svgEl, x1, y1, x2, y2, color, delay) {
-  return new Promise((resolve) => {
+function animateLeg(svgEl, x1, y1, x2, y2, color, delay, isCancelled) {
+  return new Promise((resolve, reject) => {
     const qx = (x1 * 0.55 + x2 * 0.45);
     const qy = (y1 * 0.55 + y2 * 0.45) - 18;
 
@@ -47,6 +47,11 @@ function animateLeg(svgEl, x1, y1, x2, y2, color, delay) {
     const start = performance.now() + delay;
 
     function tick(now) {
+      if (isCancelled()) {
+        svgEl.querySelector('#particles')?.removeChild(dot);
+        if (path.parentNode) svgEl.removeChild(path);
+        return reject(new Error('cancelled'));
+      }
       if (now < start) { requestAnimationFrame(tick); return; }
       const t = Math.min((now - start) / ANIM_DUR, 1);
       const pt = path.getPointAtLength(t * len);
@@ -106,7 +111,11 @@ export function BridgeView() {
     const from = positions.find((p) => p.id === next.fromCurrency);
     const to   = positions.find((p) => p.id === next.toCurrency);
 
-    if (!from || !to) { setAnimating(false); return; }
+    if (!from || !to) {
+      setQueue((q) => [next, ...q]);
+      setAnimating(false);
+      return;
+    }
 
     const fromColor = colorFor(from.id, ringCurrencies);
     const toColor   = colorFor(to.id,   ringCurrencies);
@@ -117,7 +126,7 @@ export function BridgeView() {
     flashArc(arcsEl, from.x, from.y, CX, CY, fromColor);
     flashArc(arcsEl, CX, CY, to.x, to.y, toColor);
 
-    animateLeg(svgRef.current, from.x, from.y, CX, CY, fromColor, 0)
+    animateLeg(svgRef.current, from.x, from.y, CX, CY, fromColor, 0, () => cancelled)
       .then(() => {
         if (cancelled) return Promise.reject(new Error('cancelled'));
         if (xrpCircle) {
@@ -127,7 +136,7 @@ export function BridgeView() {
           }, 180);
         }
         if (!svgRef.current) return Promise.reject(new Error('cancelled'));
-        return animateLeg(svgRef.current, CX, CY, to.x, to.y, toColor, 40);
+        return animateLeg(svgRef.current, CX, CY, to.x, to.y, toColor, 40, () => cancelled);
       })
       .then(() => { if (!cancelled) setAnimating(false); })
       .catch(() => setAnimating(false));
