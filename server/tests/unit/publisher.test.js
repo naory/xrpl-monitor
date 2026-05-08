@@ -76,3 +76,52 @@ describe('buildTopKChangedMessage', () => {
     expect(() => JSON.stringify(buildTopKChangedMessage(topK))).not.toThrow();
   });
 });
+
+const { buildBridgeMessage } = require('../../src/redis/publisher');
+
+const bridge = {
+  txHash: 'BRIDGE01',
+  ledgerIndex: 90000002,
+  ledgerTime: new Date('2025-06-01T00:00:00Z'),
+  fromCurrency: 'USD',
+  fromIssuer: 'rIssuer1',
+  fromValue: '50',
+  toCurrency: 'EUR',
+  toIssuer: 'rIssuer2',
+  toValue: '46',
+  xrpValue: '100',
+};
+
+describe('CHANNELS.BRIDGE', () => {
+  it('equals bridge:fill', () => {
+    expect(CHANNELS.BRIDGE).toBe('bridge:fill');
+  });
+});
+
+describe('buildBridgeMessage', () => {
+  it('sets type to bridge:fill', () => {
+    expect(buildBridgeMessage(bridge).type).toBe('bridge:fill');
+  });
+
+  it('includes all bridge fields in data', () => {
+    const msg = buildBridgeMessage(bridge);
+    expect(msg.data.txHash).toBe('BRIDGE01');
+    expect(msg.data.fromCurrency).toBe('USD');
+    expect(msg.data.toCurrency).toBe('EUR');
+    expect(msg.data.xrpValue).toBe('100');
+    expect(msg.data.fromValue).toBe('50');
+    expect(msg.data.toValue).toBe('46');
+    expect(msg.data.fromIssuer).toBe('rIssuer1');
+    expect(msg.data.toIssuer).toBe('rIssuer2');
+    expect(msg.data.ledgerIndex).toBe(90000002);
+  });
+
+  it('serialises ledgerTime as ISO string', () => {
+    const msg = buildBridgeMessage(bridge);
+    expect(msg.data.ledgerTime).toBe('2025-06-01T00:00:00.000Z');
+  });
+
+  it('is JSON-serialisable', () => {
+    expect(() => JSON.stringify(buildBridgeMessage(bridge))).not.toThrow();
+  });
+});
