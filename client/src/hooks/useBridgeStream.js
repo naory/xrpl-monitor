@@ -13,7 +13,7 @@ export function useBridgeStream() {
     let changed = false;
     const newItems = [];
 
-    for (const bridge of bridges) {
+    for (const bridge of [...bridges].reverse()) {
       if (seenRef.current.has(bridge.txHash)) continue;
       seenRef.current.add(bridge.txHash);
       if (seenRef.current.size > 200) {

@@ -1,7 +1,7 @@
 import { useWsStore } from './useWsStore';
 
 const reset = () =>
-  useWsStore.setState({ fills: [], topK: [], selectedPair: null, connected: false, bridges: [] });
+  useWsStore.setState({ fills: [], topK: [], selectedPair: null, connected: false, bridges: [], liveBuckets: {} });
 
 beforeEach(reset);
 
@@ -53,5 +53,34 @@ describe('setConnected', () => {
     expect(useWsStore.getState().connected).toBe(true);
     useWsStore.getState().setConnected(false);
     expect(useWsStore.getState().connected).toBe(false);
+  });
+});
+
+describe('addBridge', () => {
+  const makeBridge = (txHash = 'BRDG01') => ({
+    txHash,
+    fromCurrency: 'USD', fromIssuer: 'rIssuer1', fromValue: '50',
+    toCurrency: 'EUR',   toIssuer: 'rIssuer2',   toValue: '46',
+    xrpValue: '100',
+  });
+
+  it('prepends bridge to bridges array', () => {
+    useWsStore.getState().addBridge(makeBridge('TX1'));
+    useWsStore.getState().addBridge(makeBridge('TX2'));
+    const { bridges } = useWsStore.getState();
+    expect(bridges[0].txHash).toBe('TX2');
+    expect(bridges[1].txHash).toBe('TX1');
+  });
+
+  it('caps bridges at 100 entries', () => {
+    for (let i = 0; i < 105; i++) {
+      useWsStore.getState().addBridge(makeBridge(`TX${i}`));
+    }
+    expect(useWsStore.getState().bridges).toHaveLength(100);
+  });
+
+  it('does not affect fills', () => {
+    useWsStore.getState().addBridge(makeBridge());
+    expect(useWsStore.getState().fills).toHaveLength(0);
   });
 });
