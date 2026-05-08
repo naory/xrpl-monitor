@@ -1,16 +1,50 @@
 const { extractFills }                      = require('./fillExtractor');
+const { extractAmmEvents }                  = require('./ammExtractor');
 const { writeFills }                         = require('../db/fills');
 const { incrementPairs, getTopK }           = require('../redis/topk');
 const { buildRebalancePlan, applyRebalancePlan } = require('./subscriptionManager');
 const { publishFill, publishTopKChanged }   = require('../redis/publisher');
 const { recordVolume, trimWindows, detectTopKChange } = require('../redis/volume');
 const { persistPairMeta }                   = require('../redis/pairMeta');
+const { recordAmmVolume, trimAmmWindows, upsertPool } = require('../redis/ammVolume');
+const { pushLedgerRecord, trimLedgerStats } = require('../redis/ledgerStats');
+const { detectBridges }  = require('./bridgeDetector');
+const { publishBridge }  = require('../redis/publisher');
+
+function initAccumulator() {
+  return {
+    txnCount: 0, successCount: 0, failedCount: 0,
+    feeBurnDrops: 0, paymentXrpDrops: 0,
+    txTypes: {},
+  };
+}
 
 function createLedgerProcessor({ pool, redis, state, hysteresis, pairRegistry, xrplClient }) {
   const subscribedKeys = new Set();
   let previousTopK     = null;
+  let acc              = initAccumulator();
+  let prevClosedAt     = null;
 
   async function handleTransaction(event) {
+    // Accumulate ledger stats for ALL validated transactions.
+    if (event?.validated && event.tx_json) {
+      const txType = event.tx_json.TransactionType ?? 'Unknown';
+      const result = event.meta?.TransactionResult ?? '';
+      const isSuccess = result === 'tesSUCCESS';
+
+      acc.txnCount++;
+      acc.txTypes[txType] = (acc.txTypes[txType] || 0) + 1;
+      acc.feeBurnDrops += parseInt(event.tx_json.Fee ?? '0', 10) || 0;
+      if (isSuccess) {
+        acc.successCount++;
+        if (txType === 'Payment' && typeof event.tx_json.Amount === 'string') {
+          acc.paymentXrpDrops += parseInt(event.tx_json.Amount, 10) || 0;
+        }
+      } else {
+        acc.failedCount++;
+      }
+    }
+
     const fills = extractFills(event);
     if (!fills.length) return;
 
@@ -46,11 +80,43 @@ function createLedgerProcessor({ pool, redis, state, hysteresis, pairRegistry, x
       console.error('[INGEST] Failed to record volume:', err.message);
     }
 
-    // Publish each fill to Pub/Sub — fire-and-forget
     for (const fill of fills) {
       publishFill(redis, fill).catch((err) => {
         console.error('[INGEST] Failed to publish fill:', err.message);
       });
+    }
+
+    try {
+      const bridges = detectBridges(fills);
+      for (const b of bridges) {
+        publishBridge(redis, b).catch((err) => {
+          console.error('[BRIDGE] Failed to publish bridge event:', err.message);
+        });
+      }
+    } catch (err) {
+      console.error('[BRIDGE] Detection error:', err.message);
+    }
+
+    try {
+      const ammEvents = extractAmmEvents(event);
+      if (ammEvents.length) {
+        for (const ev of ammEvents) {
+          if (ev.ammAccount && ev.pairKey) {
+            upsertPool(redis, {
+              ammAccount: ev.ammAccount,
+              pairKey:    ev.pairKey,
+              asset1:     ev.asset1,
+              asset2:     ev.asset2,
+              fee:        ev.fee,
+            }).catch(() => {});
+          }
+        }
+        recordAmmVolume(redis, ammEvents).catch((err) => {
+          console.error('[AMM] Failed to record volume:', err.message);
+        });
+      }
+    } catch (err) {
+      console.error('[AMM] Extract error:', err.message);
     }
   }
 
@@ -58,9 +124,31 @@ function createLedgerProcessor({ pool, redis, state, hysteresis, pairRegistry, x
     state.currentLedger = ledgerIndex;
     console.log(`[LEDGER] Closed: ${ledgerIndex} (${txnCount} txns)`);
 
-    // Trim stale volume window entries
+    const now = Date.now();
+    const closeTimeSec = prevClosedAt ? (now - prevClosedAt) / 1000 : null;
+    prevClosedAt = now;
+
+    // Flush accumulated per-ledger stats to Redis.
+    const record = {
+      ledgerIndex,
+      closedAt: now,
+      closeTimeSec,
+      ...acc,
+    };
+    acc = initAccumulator();
+
+    pushLedgerRecord(redis, record).catch((err) => {
+      console.error('[LSTATS] Failed to push ledger record:', err.message);
+    });
+
     trimWindows(redis).catch((err) => {
       console.error('[VOLUME] Failed to trim windows:', err.message);
+    });
+    trimAmmWindows(redis).catch((err) => {
+      console.error('[AMM] Failed to trim windows:', err.message);
+    });
+    trimLedgerStats(redis).catch((err) => {
+      console.error('[LSTATS] Failed to trim windows:', err.message);
     });
 
     try {
