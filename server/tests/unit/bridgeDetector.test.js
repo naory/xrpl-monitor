@@ -118,4 +118,17 @@ describe('detectBridges', () => {
     ];
     expect(detectBridges(fills)).toEqual([]);
   });
+
+  it('aggregates amounts across same-currency legs with different issuers', () => {
+    const fills = [
+      sourceLeg({ paysIssuer: 'rIssuerA', paysValue: '30', getsValue: '60' }),
+      sourceLeg({ paysIssuer: 'rIssuerB', paysValue: '20', getsValue: '40' }),
+      destLeg({ getsIssuer: 'rIssuerC', getsValue: '46' }),
+    ];
+    const [b] = detectBridges(fills);
+    expect(parseFloat(b.fromValue)).toBeCloseTo(50);
+    expect(parseFloat(b.xrpValue)).toBeCloseTo(100);
+    expect(b.fromIssuer).toBe('rIssuerA'); // first issuer wins
+    expect(b.toIssuer).toBe('rIssuerC');
+  });
 });
