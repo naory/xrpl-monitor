@@ -86,10 +86,12 @@ export function BridgeView() {
 
   // Grow the ring as new currencies appear in stats
   useEffect(() => {
-    const incoming = Object.keys(stats).filter((c) => !ringCurrencies.includes(c));
-    if (!incoming.length) return;
-    setRingCurrencies((prev) => [...prev, ...incoming].slice(0, MAX_RING));
-  }, [stats]); // eslint-disable-line react-hooks/exhaustive-deps
+    setRingCurrencies((prev) => {
+      const incoming = Object.keys(stats).filter((c) => !prev.includes(c));
+      if (!incoming.length) return prev;
+      return [...prev, ...incoming].slice(0, MAX_RING);
+    });
+  }, [stats]);
 
   const positions = ringPositions(ringCurrencies);
 
@@ -110,21 +112,27 @@ export function BridgeView() {
     const toColor   = colorFor(to.id,   ringCurrencies);
     const arcsEl    = svgRef.current.querySelector('#arcs');
     const xrpCircle = svgRef.current.querySelector('#xrp-circle');
+    let cancelled   = false;
 
     flashArc(arcsEl, from.x, from.y, CX, CY, fromColor);
     flashArc(arcsEl, CX, CY, to.x, to.y, toColor);
 
     animateLeg(svgRef.current, from.x, from.y, CX, CY, fromColor, 0)
       .then(() => {
+        if (cancelled) return Promise.reject(new Error('cancelled'));
         if (xrpCircle) {
           xrpCircle.style.filter = 'drop-shadow(0 0 18px rgba(0,166,204,0.95))';
           setTimeout(() => {
-            xrpCircle.style.filter = 'drop-shadow(0 0 8px rgba(0,166,204,0.4))';
+            if (!cancelled && xrpCircle) xrpCircle.style.filter = 'drop-shadow(0 0 8px rgba(0,166,204,0.4))';
           }, 180);
         }
+        if (!svgRef.current) return Promise.reject(new Error('cancelled'));
         return animateLeg(svgRef.current, CX, CY, to.x, to.y, toColor, 40);
       })
-      .then(() => setAnimating(false));
+      .then(() => { if (!cancelled) setAnimating(false); })
+      .catch(() => setAnimating(false));
+
+    return () => { cancelled = true; };
   }, [queue, animating, positions, ringCurrencies]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sortedStats = Object.entries(stats)
