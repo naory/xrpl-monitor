@@ -1,4 +1,4 @@
-const { buildFillMessage, buildTopKChangedMessage, CHANNELS } = require('../../src/redis/publisher');
+const { buildFillMessage, buildTopKChangedMessage, CHANNELS, buildBridgeMessage } = require('../../src/redis/publisher');
 
 const fill = {
   txHash: 'AABB01',
@@ -76,8 +76,6 @@ describe('buildTopKChangedMessage', () => {
     expect(() => JSON.stringify(buildTopKChangedMessage(topK))).not.toThrow();
   });
 });
-
-const { buildBridgeMessage } = require('../../src/redis/publisher');
 
 const bridge = {
   txHash: 'BRIDGE01',
