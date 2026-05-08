@@ -16,6 +16,10 @@ export function useBridgeStream() {
     for (const bridge of bridges) {
       if (seenRef.current.has(bridge.txHash)) continue;
       seenRef.current.add(bridge.txHash);
+      if (seenRef.current.size > 200) {
+        const oldest = seenRef.current.values().next().value;
+        seenRef.current.delete(oldest);
+      }
       changed = true;
       newItems.push(bridge);
     }

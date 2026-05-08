@@ -1,7 +1,7 @@
 import { useWsStore } from './useWsStore';
 
 const reset = () =>
-  useWsStore.setState({ fills: [], topK: [], selectedPair: null, connected: false });
+  useWsStore.setState({ fills: [], topK: [], selectedPair: null, connected: false, bridges: [] });
 
 beforeEach(reset);
 
