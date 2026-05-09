@@ -9,6 +9,7 @@ const { Hysteresis }              = require('./ingest/hysteresis');
 const { PairRegistry }            = require('./ingest/pairRegistry');
 const { createApp }               = require('./api/app');
 const { createWebSocketServer }   = require('./api/ws');
+const { bootstrapAmmPools }       = require('./ingest/ammBootstrap');
 
 async function main() {
   const redis = createRedisClient();
@@ -62,6 +63,11 @@ async function main() {
   const { close: closeWs } = createWebSocketServer({ httpServer: server, redis });
 
   await xrplClient.connect();
+
+  // Seed known AMM pools so the AMM tab has data before any swaps are seen.
+  bootstrapAmmPools(xrplClient, redis).catch((err) => {
+    console.error('[AMM] Bootstrap failed:', err.message);
+  });
 
   async function shutdown() {
     console.log('[SHUTDOWN] Graceful shutdown...');

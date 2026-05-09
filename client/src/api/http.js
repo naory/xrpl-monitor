@@ -14,11 +14,19 @@ export function fetchStats(window) {
 }
 
 export function fetchOrderBook(pairKey) {
-  return api.get(`/book/${encodeURIComponent(pairKey)}`).then((r) => r.data);
+  return api.get('/book', { params: { pairKey } }).then((r) => r.data);
 }
 
 export function fetchOhlcv({ pairKey, window }) {
   return api
     .get('/fills/ohlcv', { params: { pairKey, window } })
     .then((r) => r.data);
+}
+
+export function fetchAmmStats(window) {
+  return api.get('/amm/stats', { params: { window } }).then((r) => r.data);
+}
+
+export function fetchLedgerStats(window) {
+  return api.get('/ledger/stats', { params: { window } }).then((r) => r.data);
 }
