@@ -99,6 +99,10 @@ export function BridgeView() {
   }, [stats]);
 
   const positions = ringPositions(ringCurrencies);
+  const maxVol = positions.reduce((m, p) => {
+    const s = stats[p.id];
+    return Math.max(m, s?.fromVolume ?? 0, s?.toVolume ?? 0);
+  }, 1);
 
   // Animation queue processor
   useEffect(() => {
@@ -145,7 +149,7 @@ export function BridgeView() {
   }, [queue, animating, positions, ringCurrencies]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sortedStats = Object.entries(stats)
-    .sort((a, b) => b[1].volume - a[1].volume);
+    .sort((a, b) => (b[1].fromVolume + b[1].toVolume) - (a[1].fromVolume + a[1].toVolume));
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', p: 2, height: '100%', overflow: 'auto' }}>
@@ -166,6 +170,35 @@ export function BridgeView() {
 
         {/* Ring guide */}
         <circle cx={CX} cy={CY} r={RING_R} fill="none" stroke="#21262d" strokeWidth={1} strokeDasharray="4 6" />
+
+        {/* Weighted persistent edges */}
+        <g id="edges">
+          {positions.map((p) => {
+            const s = stats[p.id];
+            if (!s) return null;
+            const color = colorFor(p.id, ringCurrencies);
+            const dx = CX - p.x, dy = CY - p.y;
+            const len = Math.sqrt(dx * dx + dy * dy) || 1;
+            const px = -dy / len, py = dx / len;
+            const mx = (p.x + CX) / 2, my = (p.y + CY) / 2;
+            const O = 28;
+            const sellW = s.fromVolume > 0 ? Math.max(0.8, (s.fromVolume / maxVol) * 6) : 0;
+            const buyW  = s.toVolume   > 0 ? Math.max(0.8, (s.toVolume   / maxVol) * 6) : 0;
+            return (
+              <g key={p.id}>
+                {sellW > 0 && (
+                  <path d={`M${p.x},${p.y} Q${mx + px * O},${my + py * O} ${CX},${CY}`}
+                    fill="none" stroke={color} strokeWidth={sellW} opacity={0.45} />
+                )}
+                {buyW > 0 && (
+                  <path d={`M${CX},${CY} Q${mx - px * O},${my - py * O} ${p.x},${p.y}`}
+                    fill="none" stroke={color} strokeWidth={buyW} opacity={0.25}
+                    strokeDasharray="4 3" />
+                )}
+              </g>
+            );
+          })}
+        </g>
 
         {/* Faint arc flashes */}
         <g id="arcs" />
@@ -210,20 +243,21 @@ export function BridgeView() {
           border: '1px solid', borderColor: 'divider', borderRadius: 1, overflow: 'hidden',
         }}>
           <Box sx={{
-            display: 'grid', gridTemplateColumns: '1fr 1fr 80px',
+            display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 60px',
             px: 2, py: 1, borderBottom: '1px solid', borderColor: 'divider',
           }}>
-            {['Currency', 'Bridged (XRP)', 'Flows'].map((h) => (
-              <Typography key={h} variant="caption" sx={{ color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+            {['Currency', '→ XRP (sold)', 'XRP → (bought)', 'Flows'].map((h) => (
+              <Typography key={h} variant="caption" sx={{ color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.8, fontSize: '0.6rem' }}>
                 {h}
               </Typography>
             ))}
           </Box>
           {sortedStats.map(([id, v]) => {
             const color = colorFor(id, ringCurrencies);
+            const fmt = (n) => n > 0 ? n.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—';
             return (
               <Box key={id} sx={{
-                display: 'grid', gridTemplateColumns: '1fr 1fr 80px',
+                display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 60px',
                 alignItems: 'center', px: 2, py: 0.8,
                 borderBottom: '1px solid', borderColor: 'divider',
                 '&:last-child': { borderBottom: 'none' },
@@ -233,8 +267,11 @@ export function BridgeView() {
                   <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: color, flexShrink: 0 }} />
                   <Typography variant="body2" sx={{ fontWeight: 600 }}>{id}</Typography>
                 </Box>
-                <Typography variant="body2" sx={{ color: 'primary.main', fontVariantNumeric: 'tabular-nums' }}>
-                  {v.volume.toLocaleString(undefined, { maximumFractionDigits: 2 })} XRP
+                <Typography variant="body2" sx={{ color: 'primary.main', fontVariantNumeric: 'tabular-nums', fontSize: '0.75rem' }}>
+                  {fmt(v.fromVolume)}
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'info.main', fontVariantNumeric: 'tabular-nums', fontSize: '0.75rem' }}>
+                  {fmt(v.toVolume)}
                 </Typography>
                 <Typography variant="caption" sx={{ color: 'text.secondary', textAlign: 'right' }}>
                   {v.count}

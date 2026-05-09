@@ -30,12 +30,10 @@ export function useBridgeStream() {
       const next = { ...prev };
       for (const bridge of newItems) {
         const xrp = parseFloat(bridge.xrpValue) || 0;
-        for (const currency of [bridge.fromCurrency, bridge.toCurrency]) {
-          next[currency] = {
-            volume: (next[currency]?.volume ?? 0) + xrp / 2,
-            count:  (next[currency]?.count  ?? 0) + 1,
-          };
-        }
+        const fc = bridge.fromCurrency;
+        const tc = bridge.toCurrency;
+        next[fc] = { fromVolume: (next[fc]?.fromVolume ?? 0) + xrp, toVolume: next[fc]?.toVolume ?? 0, count: (next[fc]?.count ?? 0) + 1 };
+        next[tc] = { fromVolume: next[tc]?.fromVolume ?? 0, toVolume: (next[tc]?.toVolume ?? 0) + xrp, count: (next[tc]?.count ?? 0) + 1 };
       }
       return next;
     });
