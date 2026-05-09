@@ -94,6 +94,11 @@ function createXrplConnection({ onTransaction, onLedgerClosed, onStateChange }) 
     return response.result?.offers ?? [];
   }
 
+  async function request(req) {
+    if (!client?.isConnected()) throw new Error('XRPL client not connected');
+    return client.request(req);
+  }
+
   function isConnected() {
     return client?.isConnected() ?? false;
   }
@@ -103,7 +108,7 @@ function createXrplConnection({ onTransaction, onLedgerClosed, onStateChange }) 
     if (client?.isConnected()) await client.disconnect();
   }
 
-  return { connect, disconnect, isConnected, subscribeOrderBook, unsubscribeOrderBook, requestOrderBook };
+  return { connect, disconnect, isConnected, request, subscribeOrderBook, unsubscribeOrderBook, requestOrderBook };
 }
 
 module.exports = { createXrplConnection };

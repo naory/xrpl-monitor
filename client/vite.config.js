@@ -7,9 +7,12 @@ export default defineConfig({
     host: '127.0.0.1',
     port: 3000,
     proxy: {
-      '/fills':  { target: 'http://127.0.0.1:3002', changeOrigin: true },  // covers /fills, /fills/stats, /fills/ohlcv
-      '/book':   { target: 'http://127.0.0.1:3002', changeOrigin: true },
-      '/health': { target: 'http://127.0.0.1:3002', changeOrigin: true },
+      '/fills':  { target: 'http://127.0.0.1:3004', changeOrigin: true },
+      '/book':   { target: 'http://127.0.0.1:3004', changeOrigin: true },
+      '/health': { target: 'http://127.0.0.1:3004', changeOrigin: true },
+      '/amm':    { target: 'http://127.0.0.1:3004', changeOrigin: true },
+      '/ledger': { target: 'http://127.0.0.1:3004', changeOrigin: true },
+      '/ws':     { target: 'ws://127.0.0.1:3004', ws: true },
     },
   },
   test: {
