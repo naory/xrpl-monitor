@@ -24,8 +24,18 @@ function createLedgerProcessor({ pool, redis, state, hysteresis, pairRegistry, x
   let previousTopK     = null;
   let acc              = initAccumulator();
   let prevClosedAt     = null;
+  const seenTxHashes   = new Set();
 
   async function handleTransaction(event) {
+    const txHash = event?.hash;
+    if (txHash) {
+      if (seenTxHashes.has(txHash)) return;
+      seenTxHashes.add(txHash);
+      if (seenTxHashes.size > 2000) {
+        const first = seenTxHashes.values().next().value;
+        seenTxHashes.delete(first);
+      }
+    }
     // Accumulate ledger stats for ALL validated transactions.
     if (event?.validated && event.tx_json) {
       const txType = event.tx_json.TransactionType ?? 'Unknown';
