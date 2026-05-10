@@ -57,6 +57,14 @@ describe('recordBridgeEvent', () => {
     expect(await redis.zcard(LOG_KEY)).toBe(2);
   });
 
+  it('does not double-insert the same event (NX idempotency)', async () => {
+    if (!available) return;
+    const now = Date.now();
+    await recordBridgeEvent(redis, makeBridge(), now);
+    await recordBridgeEvent(redis, makeBridge(), now); // identical JSON + score
+    expect(await redis.zcard(LOG_KEY)).toBe(1);
+  });
+
   it('converts Date ledgerTime to ISO string', async () => {
     if (!available) return;
     const now = Date.now();
@@ -64,6 +72,12 @@ describe('recordBridgeEvent', () => {
     const [raw] = await redis.zrange(LOG_KEY, 0, 0);
     const parsed = JSON.parse(raw);
     expect(parsed.ledgerTime).toBe('2026-05-10T10:00:00.000Z');
+    expect(parsed).toMatchObject({
+      fromCurrency: 'USD',
+      toCurrency:   'EUR',
+      xrpValue:     '205',
+      fromIssuer:   'rIssuer1',
+    });
   });
 });
 
@@ -95,7 +109,6 @@ describe('getBridgeEvents', () => {
   });
 
   it('throws for unknown window', async () => {
-    if (!available) return;
     await expect(getBridgeEvents(redis, '7d')).rejects.toThrow('Unknown window');
   });
 
