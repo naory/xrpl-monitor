@@ -140,15 +140,75 @@ export function BridgeView() {
 
   const [viewWindow, setViewWindow] = useState('live');
 
+  const [playing, setPlaying]     = useState(false);
+  const [speed,   setSpeed]       = useState(10);   // multiplier: 1 | 10 | 50
+  const replayRef                 = useRef(null);
+  const replayIdxRef              = useRef(0);
+  const replayEventsRef           = useRef([]);
+
   const isLive = viewWindow === 'live';
   const historyQuery = useBridgeHistory(isLive ? null : viewWindow);
   const historyData  = historyQuery.data;
 
   const activeStats = isLive ? stats : (historyData?.summary ?? {});
 
+  function stopReplay() {
+    clearInterval(replayRef.current);
+    replayRef.current = null;
+    setPlaying(false);
+  }
+
+  function startReplay(events, fromIdx, speedMultiplier) {
+    clearInterval(replayRef.current);
+    replayEventsRef.current = events;
+    replayIdxRef.current    = fromIdx;
+    setPlaying(true);
+
+    const TICK_MS   = 200;
+    const REPLAY_MS = TICK_MS * speedMultiplier;
+
+    if (!events.length) { setPlaying(false); return; }
+
+    const t0Events    = new Date(events[fromIdx]?.ledgerTime).getTime();
+    let replayElapsed = 0;
+
+    replayRef.current = setInterval(() => {
+      replayElapsed += REPLAY_MS;
+      const cursor = t0Events + replayElapsed;
+      const evs    = replayEventsRef.current;
+      let idx      = replayIdxRef.current;
+      const batch  = [];
+
+      while (idx < evs.length && new Date(evs[idx].ledgerTime).getTime() <= cursor) {
+        batch.push(evs[idx++]);
+      }
+      replayIdxRef.current = idx;
+
+      if (batch.length) setQueue((q) => [...q, ...batch]);
+
+      if (idx >= evs.length) {
+        clearInterval(replayRef.current);
+        replayRef.current = null;
+        setPlaying(false);
+      }
+    }, TICK_MS);
+  }
+
+  function seekReplay(ts) {
+    if (!historyData?.events?.length) return;
+    const events  = historyData.events;
+    const idx     = events.findIndex((ev) => new Date(ev.ledgerTime).getTime() >= ts);
+    const fromIdx = idx === -1 ? events.length - 1 : idx;
+    if (playing) {
+      startReplay(events, fromIdx, speed);
+    } else {
+      replayIdxRef.current    = fromIdx;
+      replayEventsRef.current = events;
+    }
+  }
+
   function handleSparklineSeek(ts) {
-    // Replay seek wired in Task 8
-    console.log('[BRIDGE] Seek to', new Date(ts).toISOString());
+    seekReplay(ts);
   }
 
   // Grow the ring as new currencies appear in activeStats
@@ -159,6 +219,8 @@ export function BridgeView() {
       return [...prev, ...incoming].slice(0, MAX_RING);
     });
   }, [activeStats]);
+
+  useEffect(() => () => clearInterval(replayRef.current), []);
 
   const positions = ringPositions(ringCurrencies);
   const maxVol = positions.reduce((m, p) => {
@@ -304,6 +366,7 @@ export function BridgeView() {
         exclusive
         onChange={(_, v) => {
           if (v) {
+            stopReplay();
             setViewWindow(v);
             setRingCurrencies([]);
           }
@@ -327,6 +390,55 @@ export function BridgeView() {
             ringCurrencies={ringCurrencies}
             onSeek={handleSparklineSeek}
           />
+        </Box>
+      )}
+
+      {/* Replay controls — historical mode only */}
+      {!isLive && (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+          <Box
+            component="button"
+            onClick={() => {
+              if (playing) {
+                stopReplay();
+              } else {
+                const events  = historyData?.events ?? [];
+                const fromIdx = replayIdxRef.current < events.length ? replayIdxRef.current : 0;
+                startReplay(events, fromIdx, speed);
+              }
+            }}
+            sx={{
+              px: 2, py: 0.5, borderRadius: 1, border: '1px solid',
+              borderColor: 'divider', bgcolor: 'background.paper',
+              color: playing ? 'warning.main' : 'primary.main',
+              cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600,
+              '&:hover': { bgcolor: 'action.hover' },
+            }}
+          >
+            {playing ? '⏸ Pause' : '▶ Play'}
+          </Box>
+
+          <ToggleButtonGroup
+            value={speed}
+            exclusive
+            onChange={(_, v) => {
+              if (v) {
+                setSpeed(v);
+                if (playing) startReplay(replayEventsRef.current, replayIdxRef.current, v);
+              }
+            }}
+            size="small"
+          >
+            {[1, 10, 50].map((s) => (
+              <ToggleButton key={s} value={s} sx={{ px: 1.5, fontSize: '0.65rem' }}>
+                {s}×
+              </ToggleButton>
+            ))}
+          </ToggleButtonGroup>
+
+          <Typography variant="caption" sx={{ color: 'text.secondary', ml: 1 }}>
+            {playing ? 'replaying…' : 'paused'}
+          </Typography>
         </Box>
       )}
 
