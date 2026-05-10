@@ -45,7 +45,9 @@ describe('aggregateBridgeEvents', () => {
     );
     const { topCurrencies } = aggregateBridgeEvents(events, '1h', now);
     expect(topCurrencies).toHaveLength(5);
-    expect(topCurrencies[0]).toBe('USD'); // highest volume
+    expect(topCurrencies[0]).toBe('XAH'); // highest volume: 60+50+40+30+20+10 = 210
+    expect(topCurrencies).toContain('USD'); // second: 60
+    expect(topCurrencies).toContain('EUR'); // third: 50
   });
 
   it('returns correct number of buckets for each window', () => {

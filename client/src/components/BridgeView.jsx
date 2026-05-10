@@ -369,6 +369,7 @@ export function BridgeView() {
             stopReplay();
             setViewWindow(v);
             setRingCurrencies([]);
+            setQueue([]);
           }
         }}
         size="small"

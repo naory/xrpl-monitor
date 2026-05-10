@@ -22,7 +22,7 @@ export function aggregateBridgeEvents(events, timeWindow, now = Date.now()) {
     summary[fc] = { fromVolume: (summary[fc]?.fromVolume ?? 0) + xrp, toVolume: summary[fc]?.toVolume ?? 0,  count: (summary[fc]?.count ?? 0) + 1 };
     summary[tc] = { fromVolume: summary[tc]?.fromVolume ?? 0,          toVolume: (summary[tc]?.toVolume ?? 0) + xrp, count: (summary[tc]?.count ?? 0) + 1 };
     currencyTotals[fc] = (currencyTotals[fc] ?? 0) + xrp;
-    currencyTotals[tc] = currencyTotals[tc] ?? 0;
+    currencyTotals[tc] = (currencyTotals[tc] ?? 0) + xrp;
   }
 
   const topCurrencies = Object.entries(currencyTotals)
