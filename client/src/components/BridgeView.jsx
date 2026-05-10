@@ -1,7 +1,8 @@
 // client/src/components/BridgeView.jsx
 import { useEffect, useRef, useState } from 'react';
-import { Box, Typography } from '@mui/material';
+import { Box, Typography, ToggleButton, ToggleButtonGroup } from '@mui/material';
 import { useBridgeStream } from '../hooks/useBridgeStream';
+import { useBridgeHistory } from '../hooks/useBridgeHistory';
 
 const CX = 240, CY = 240, RING_R = 170, NS = 'http://www.w3.org/2000/svg';
 const MAX_RING = 12;
@@ -89,18 +90,26 @@ export function BridgeView() {
   const [animating, setAnimating] = useState(false);
   const [ringCurrencies, setRingCurrencies] = useState([]);
 
-  // Grow the ring as new currencies appear in stats
+  const [viewWindow, setViewWindow] = useState('live');
+
+  const isLive = viewWindow === 'live';
+  const historyQuery = useBridgeHistory(isLive ? null : viewWindow);
+  const historyData  = historyQuery.data;
+
+  const activeStats = isLive ? stats : (historyData?.summary ?? {});
+
+  // Grow the ring as new currencies appear in activeStats
   useEffect(() => {
     setRingCurrencies((prev) => {
-      const incoming = Object.keys(stats).filter((c) => !prev.includes(c));
+      const incoming = Object.keys(activeStats).filter((c) => !prev.includes(c));
       if (!incoming.length) return prev;
       return [...prev, ...incoming].slice(0, MAX_RING);
     });
-  }, [stats]);
+  }, [activeStats]);
 
   const positions = ringPositions(ringCurrencies);
   const maxVol = positions.reduce((m, p) => {
-    const s = stats[p.id];
+    const s = activeStats[p.id];
     return Math.max(m, s?.fromVolume ?? 0, s?.toVolume ?? 0);
   }, 1);
 
@@ -148,13 +157,13 @@ export function BridgeView() {
     return () => { cancelled = true; };
   }, [queue, animating, positions, ringCurrencies]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const sortedStats = Object.entries(stats)
+  const sortedStats = Object.entries(activeStats)
     .sort((a, b) => (b[1].fromVolume + b[1].toVolume) - (a[1].fromVolume + a[1].toVolume));
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', p: 2, height: '100%', overflow: 'auto' }}>
       <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 2, letterSpacing: 1, textTransform: 'uppercase', fontSize: '0.7rem' }}>
-        XRP Bridge Utility — Live
+        XRP Bridge Utility — {viewWindow === 'live' ? 'Live' : `Last ${viewWindow}`}
       </Typography>
 
       <svg ref={svgRef} viewBox="0 0 480 480" style={{ width: 420, height: 420, flexShrink: 0 }}>
@@ -174,7 +183,7 @@ export function BridgeView() {
         {/* Weighted persistent edges */}
         <g id="edges">
           {positions.map((p) => {
-            const s = stats[p.id];
+            const s = activeStats[p.id];
             if (!s) return null;
             const color = colorFor(p.id, ringCurrencies);
             const dx = CX - p.x, dy = CY - p.y;
@@ -235,6 +244,26 @@ export function BridgeView() {
         <text x={CX} y={CY + 13} textAnchor="middle" dominantBaseline="middle"
           fill="#4d9ab5" fontSize={9} fontWeight={500}>bridge</text>
       </svg>
+
+      {/* Window selector */}
+      <ToggleButtonGroup
+        value={viewWindow}
+        exclusive
+        onChange={(_, v) => {
+          if (v) {
+            setViewWindow(v);
+            setRingCurrencies([]);
+          }
+        }}
+        size="small"
+        sx={{ mb: 2, mt: 1 }}
+      >
+        {['live', '10m', '1h', '24h'].map((w) => (
+          <ToggleButton key={w} value={w} sx={{ px: 2, fontSize: '0.7rem', textTransform: 'uppercase' }}>
+            {w}
+          </ToggleButton>
+        ))}
+      </ToggleButtonGroup>
 
       {/* Stats table */}
       {sortedStats.length > 0 && (
