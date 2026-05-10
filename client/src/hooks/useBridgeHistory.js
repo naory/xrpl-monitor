@@ -1,11 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchBridgeEvents } from '../api/http';
 
-const BUCKET_MS = { '10m': 30_000, '1h': 5 * 60_000, '24h': 60 * 60_000 };
-const WINDOWS_MS = { '10m': 10 * 60_000, '1h': 60 * 60_000, '24h': 24 * 60 * 60_000 };
+export const BUCKET_MS = { '10m': 30_000, '1h': 5 * 60_000, '24h': 60 * 60_000 };
+export const WINDOWS_MS = { '10m': 10 * 60_000, '1h': 60 * 60_000, '24h': 24 * 60 * 60_000 };
 const TOP_N = 5;
 
 export function aggregateBridgeEvents(events, timeWindow, now = Date.now()) {
+  if (!BUCKET_MS[timeWindow] || !WINDOWS_MS[timeWindow]) throw new Error(`Unknown timeWindow: ${timeWindow}`);
   const bucketMs    = BUCKET_MS[timeWindow];
   const windowMs    = WINDOWS_MS[timeWindow];
   const windowStart = now - windowMs;
@@ -17,6 +18,7 @@ export function aggregateBridgeEvents(events, timeWindow, now = Date.now()) {
   for (const ev of events) {
     const xrp = parseFloat(ev.xrpValue) || 0;
     const { fromCurrency: fc, toCurrency: tc } = ev;
+    // count = number of bridge events this currency participated in (as source or destination)
     summary[fc] = { fromVolume: (summary[fc]?.fromVolume ?? 0) + xrp, toVolume: summary[fc]?.toVolume ?? 0,  count: (summary[fc]?.count ?? 0) + 1 };
     summary[tc] = { fromVolume: summary[tc]?.fromVolume ?? 0,          toVolume: (summary[tc]?.toVolume ?? 0) + xrp, count: (summary[tc]?.count ?? 0) + 1 };
     currencyTotals[fc] = (currencyTotals[fc] ?? 0) + xrp;

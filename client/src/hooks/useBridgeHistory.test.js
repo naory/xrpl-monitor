@@ -1,8 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { aggregateBridgeEvents } from './useBridgeHistory';
-
-const BUCKET_MS = { '10m': 30_000, '1h': 5 * 60_000, '24h': 60 * 60_000 };
-const WINDOWS_MS = { '10m': 10 * 60_000, '1h': 60 * 60_000, '24h': 24 * 60 * 60_000 };
+import { aggregateBridgeEvents, BUCKET_MS, WINDOWS_MS } from './useBridgeHistory';
 
 function makeEvent(overrides = {}) {
   return {
@@ -28,6 +25,7 @@ describe('aggregateBridgeEvents', () => {
     expect(summary['EUR'].toVolume).toBeCloseTo(100);
     expect(summary['EUR'].fromVolume).toBe(0);
     expect(summary['USD'].count).toBe(1);
+    expect(summary['EUR'].count).toBe(1);
   });
 
   it('accumulates multiple events for the same currency', () => {
@@ -66,7 +64,7 @@ describe('aggregateBridgeEvents', () => {
     const ev = makeEvent({ ledgerTime: new Date(ts).toISOString() });
     const { series } = aggregateBridgeEvents([ev], '1h', now);
     const bucketTotal = Object.values(series[expectedIdx].currencies).reduce((a, b) => a + b, 0);
-    expect(bucketTotal).toBeGreaterThan(0);
+    expect(bucketTotal).toBeCloseTo(100);
   });
 
   it('groups currencies beyond top 5 into "other"', () => {
