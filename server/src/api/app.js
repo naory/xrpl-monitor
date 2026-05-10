@@ -4,6 +4,7 @@ const { createBookRouter }   = require('./book');
 const { createFillsRouter }  = require('./fills');
 const { createAmmRouter }    = require('./amm');
 const { createLedgerRouter } = require('./ledger');
+const { createBridgeRouter } = require('./bridge');
 
 function createApp({ pool, redis, state, xrplClient, pairRegistry }) {
   const app = express();
@@ -14,6 +15,7 @@ function createApp({ pool, redis, state, xrplClient, pairRegistry }) {
   app.use('/fills',  createFillsRouter({ pool, redis }));
   app.use('/amm',    createAmmRouter({ redis }));
   app.use('/ledger', createLedgerRouter({ redis }));
+  app.use('/bridge', createBridgeRouter({ redis }));
 
   return app;
 }
