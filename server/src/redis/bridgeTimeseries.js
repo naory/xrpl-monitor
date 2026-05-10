@@ -1,5 +1,6 @@
 const LOG_KEY = 'bridge:log';
 
+// ms epoch timestamps, not seconds
 const WINDOWS = {
   '10m': 10 * 60 * 1000,
   '1h':  60 * 60 * 1000,
@@ -13,7 +14,7 @@ const BUCKET_MS = {
 };
 
 async function recordBridgeEvent(redis, bridge, now = Date.now()) {
-  await redis.zadd(LOG_KEY, now, JSON.stringify({
+  await redis.zadd(LOG_KEY, 'NX', now, JSON.stringify({
     txHash:       bridge.txHash,
     ledgerTime:   bridge.ledgerTime instanceof Date
                     ? bridge.ledgerTime.toISOString()
@@ -28,6 +29,10 @@ async function recordBridgeEvent(redis, bridge, now = Date.now()) {
   }));
 }
 
+/**
+ * Get bridge events within a specified time window.
+ * Returns events in ascending score order (oldest first).
+ */
 async function getBridgeEvents(redis, window, now = Date.now()) {
   if (!WINDOWS[window]) throw new Error(`Unknown window: ${window}`);
   const from = now - WINDOWS[window];
@@ -38,7 +43,8 @@ async function getBridgeEvents(redis, window, now = Date.now()) {
 }
 
 async function trimBridgeEvents(redis, now = Date.now()) {
-  const cutoff = now - WINDOWS['24h'];
+  const maxWindowMs = Math.max(...Object.values(WINDOWS));
+  const cutoff = now - maxWindowMs;
   await redis.zremrangebyscore(LOG_KEY, '-inf', cutoff);
 }
 

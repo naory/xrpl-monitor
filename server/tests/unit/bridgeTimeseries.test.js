@@ -18,4 +18,8 @@ describe('BUCKET_MS', () => {
     expect(BUCKET_MS['1h']).toBe(5 * 60_000);
     expect(BUCKET_MS['24h']).toBe(60 * 60_000);
   });
+
+  it('has exactly the same keys as WINDOWS', () => {
+    expect(Object.keys(BUCKET_MS).sort()).toEqual(Object.keys(WINDOWS).sort());
+  });
 });
