@@ -84,6 +84,54 @@ function flashArc(arcsEl, x1, y1, x2, y2, color) {
   setTimeout(() => { if (arc.parentNode) arcsEl.removeChild(arc); }, 2000);
 }
 
+const CHART_W = 420, CHART_H = 72, CHART_PAD_B = 16;
+const OTHER_COLOR = '#444e5a';
+
+function BridgeSparkline({ series, topCurrencies, ringCurrencies, onSeek }) {
+  if (!series?.length || !topCurrencies?.length) return null;
+
+  const allKeys = [...topCurrencies, 'other'];
+  const maxBucketTotal = Math.max(
+    1,
+    ...series.map((b) => allKeys.reduce((s, k) => s + (b.currencies[k] ?? 0), 0))
+  );
+
+  const barW   = Math.floor((CHART_W - 2) / series.length);
+  const chartH = CHART_H - CHART_PAD_B;
+
+  return (
+    <svg width={CHART_W} height={CHART_H} style={{ display: 'block', cursor: 'pointer' }}>
+      {series.map((bucket, i) => {
+        const total = allKeys.reduce((s, k) => s + (bucket.currencies[k] ?? 0), 0);
+        if (total === 0) return null;
+        let yOffset = chartH;
+        const x = i * barW + 1;
+
+        return (
+          <g key={bucket.ts} onClick={() => onSeek?.(bucket.ts)}>
+            {allKeys.map((k) => {
+              const val = bucket.currencies[k] ?? 0;
+              if (val === 0) return null;
+              const h = Math.max(1, Math.round((val / maxBucketTotal) * chartH));
+              yOffset -= h;
+              return (
+                <rect
+                  key={k}
+                  x={x} y={yOffset} width={Math.max(1, barW - 1)} height={h}
+                  fill={k === 'other' ? OTHER_COLOR : colorFor(k, ringCurrencies)}
+                  opacity={0.8}
+                />
+              );
+            })}
+          </g>
+        );
+      })}
+      {/* x-axis baseline */}
+      <line x1={0} y1={chartH} x2={CHART_W} y2={chartH} stroke="#30363d" strokeWidth={1} />
+    </svg>
+  );
+}
+
 export function BridgeView() {
   const { queue, setQueue, stats } = useBridgeStream();
   const svgRef      = useRef(null);
@@ -97,6 +145,11 @@ export function BridgeView() {
   const historyData  = historyQuery.data;
 
   const activeStats = isLive ? stats : (historyData?.summary ?? {});
+
+  function handleSparklineSeek(ts) {
+    // Replay seek wired in Task 8
+    console.log('[BRIDGE] Seek to', new Date(ts).toISOString());
+  }
 
   // Grow the ring as new currencies appear in activeStats
   useEffect(() => {
@@ -264,6 +317,18 @@ export function BridgeView() {
           </ToggleButton>
         ))}
       </ToggleButtonGroup>
+
+      {/* Sparkline — historical mode only */}
+      {!isLive && historyData && (
+        <Box sx={{ mb: 2 }}>
+          <BridgeSparkline
+            series={historyData.series}
+            topCurrencies={historyData.topCurrencies}
+            ringCurrencies={ringCurrencies}
+            onSeek={handleSparklineSeek}
+          />
+        </Box>
+      )}
 
       {/* Stats table */}
       {sortedStats.length > 0 && (
