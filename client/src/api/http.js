@@ -30,3 +30,7 @@ export function fetchAmmStats(window) {
 export function fetchLedgerStats(window) {
   return api.get('/ledger/stats', { params: { window } }).then((r) => r.data);
 }
+
+export function fetchBridgeEvents(timeWindow) {
+  return api.get('/bridge/events', { params: { window: timeWindow } }).then((r) => r.data);
+}
