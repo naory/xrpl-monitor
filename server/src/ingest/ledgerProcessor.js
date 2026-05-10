@@ -10,6 +10,7 @@ const { recordAmmVolume, trimAmmWindows, upsertPool } = require('../redis/ammVol
 const { pushLedgerRecord, trimLedgerStats } = require('../redis/ledgerStats');
 const { detectBridges }  = require('./bridgeDetector');
 const { publishBridge }  = require('../redis/publisher');
+const { recordBridgeEvent, trimBridgeEvents } = require('../redis/bridgeTimeseries');
 
 function initAccumulator() {
   return {
@@ -102,6 +103,9 @@ function createLedgerProcessor({ pool, redis, state, hysteresis, pairRegistry, x
         publishBridge(redis, b).catch((err) => {
           console.error('[BRIDGE] Failed to publish bridge event:', err.message);
         });
+        recordBridgeEvent(redis, b).catch((err) => {
+          console.error('[BRIDGE] Failed to record bridge event:', err.message);
+        });
       }
     } catch (err) {
       console.error('[BRIDGE] Detection error:', err.message);
@@ -159,6 +163,9 @@ function createLedgerProcessor({ pool, redis, state, hysteresis, pairRegistry, x
     });
     trimLedgerStats(redis).catch((err) => {
       console.error('[LSTATS] Failed to trim windows:', err.message);
+    });
+    trimBridgeEvents(redis).catch((err) => {
+      console.error('[BRIDGE] Failed to trim events:', err.message);
     });
 
     try {
