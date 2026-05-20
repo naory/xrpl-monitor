@@ -1,5 +1,5 @@
 // client/src/components/BridgeView.jsx
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Typography, ToggleButton, ToggleButtonGroup } from '@mui/material';
 import { useBridgeStream } from '../hooks/useBridgeStream';
 import { useBridgeHistory } from '../hooks/useBridgeHistory';
@@ -14,6 +14,7 @@ const KNOWN_COLORS = {
   XLM: '#e6edf3', ADA: '#c9d1d9', DOT: '#b1bac4', LINK: '#8b949e',
 };
 const FALLBACK = ['#d2a8ff','#ffa657','#79c0ff','#56d364','#f78166','#58a6ff'];
+const EMPTY_STATS = {};
 
 function colorFor(id, orderedList) {
   if (KNOWN_COLORS[id]) return KNOWN_COLORS[id];
@@ -150,7 +151,7 @@ export function BridgeView() {
   const historyQuery = useBridgeHistory(isLive ? null : viewWindow);
   const historyData  = historyQuery.data;
 
-  const activeStats = isLive ? stats : (historyData?.summary ?? {});
+  const activeStats = isLive ? stats : (historyData?.summary ?? EMPTY_STATS);
 
   function stopReplay() {
     clearInterval(replayRef.current);
@@ -222,7 +223,7 @@ export function BridgeView() {
 
   useEffect(() => () => clearInterval(replayRef.current), []);
 
-  const positions = ringPositions(ringCurrencies);
+  const positions = useMemo(() => ringPositions(ringCurrencies), [ringCurrencies]);
   const maxVol = positions.reduce((m, p) => {
     const s = activeStats[p.id];
     return Math.max(m, s?.fromVolume ?? 0, s?.toVolume ?? 0);
