@@ -31,7 +31,7 @@ async function upsertBridgeBuckets(pool, rows) {
     }
     await client.query('COMMIT');
   } catch (err) {
-    await client.query('ROLLBACK');
+    try { await client.query('ROLLBACK'); } catch (_) {}
     throw err;
   } finally {
     client.release();

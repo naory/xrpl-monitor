@@ -54,7 +54,7 @@ function makeRow(overrides = {}) {
 
 describe('upsertBridgeBuckets', () => {
   it('inserts a new bucket row', async () => {
-    if (!dbAvailable) return;
+    if (!dbAvailable) return test.skip();
 
     await upsertBridgeBuckets(pool, [makeRow()]);
 
@@ -66,7 +66,7 @@ describe('upsertBridgeBuckets', () => {
   });
 
   it('accumulates volumes on conflict (same bucket, second upsert)', async () => {
-    if (!dbAvailable) return;
+    if (!dbAvailable) return test.skip();
 
     await upsertBridgeBuckets(pool, [makeRow()]);
     await upsertBridgeBuckets(pool, [makeRow()]);
@@ -78,7 +78,7 @@ describe('upsertBridgeBuckets', () => {
   });
 
   it('inserts multiple rows in one call', async () => {
-    if (!dbAvailable) return;
+    if (!dbAvailable) return test.skip();
 
     await upsertBridgeBuckets(pool, [
       makeRow({ fromCurrency: 'USD', toCurrency: 'EUR' }),
@@ -92,14 +92,14 @@ describe('upsertBridgeBuckets', () => {
   });
 
   it('is a no-op for an empty array', async () => {
-    if (!dbAvailable) return;
+    if (!dbAvailable) return test.skip();
     await expect(upsertBridgeBuckets(pool, [])).resolves.not.toThrow();
     const { rows } = await pool.query('SELECT * FROM bridge_hourly_buckets');
     expect(rows).toHaveLength(0);
   });
 
   it('handles XRP issuers stored as empty string', async () => {
-    if (!dbAvailable) return;
+    if (!dbAvailable) return test.skip();
 
     await upsertBridgeBuckets(pool, [makeRow({ fromIssuer: '', toIssuer: '' })]);
     const { rows } = await pool.query('SELECT * FROM bridge_hourly_buckets');
@@ -110,7 +110,7 @@ describe('upsertBridgeBuckets', () => {
 
 describe('queryBridgeBuckets', () => {
   it('returns rows within the requested range', async () => {
-    if (!dbAvailable) return;
+    if (!dbAvailable) return test.skip();
 
     await upsertBridgeBuckets(pool, [
       makeRow({ hour: HOUR }),
@@ -123,7 +123,7 @@ describe('queryBridgeBuckets', () => {
   });
 
   it('returns rows in ascending hour order', async () => {
-    if (!dbAvailable) return;
+    if (!dbAvailable) return test.skip();
 
     await upsertBridgeBuckets(pool, [
       makeRow({ hour: NEXT_HOUR }),
@@ -138,7 +138,7 @@ describe('queryBridgeBuckets', () => {
   });
 
   it('returns camelCase column aliases', async () => {
-    if (!dbAvailable) return;
+    if (!dbAvailable) return test.skip();
 
     await upsertBridgeBuckets(pool, [makeRow()]);
     const rows = await queryBridgeBuckets(pool, {
@@ -152,7 +152,7 @@ describe('queryBridgeBuckets', () => {
   });
 
   it('returns empty array when no rows in range', async () => {
-    if (!dbAvailable) return;
+    if (!dbAvailable) return test.skip();
     const rows = await queryBridgeBuckets(pool, { from: HOUR, to: NEXT_HOUR });
     expect(rows).toEqual([]);
   });
