@@ -21,3 +21,17 @@ CREATE INDEX IF NOT EXISTS idx_fills_ledger_index  ON trade_fills (ledger_index)
 CREATE INDEX IF NOT EXISTS idx_fills_pair          ON trade_fills (gets_currency, pays_currency);
 CREATE INDEX IF NOT EXISTS idx_fills_ledger_time   ON trade_fills (ledger_time);
 CREATE INDEX IF NOT EXISTS idx_fills_account       ON trade_fills (account);
+
+CREATE TABLE IF NOT EXISTS bridge_hourly_buckets (
+    hour          TIMESTAMP NOT NULL,
+    from_currency VARCHAR(64) NOT NULL,
+    from_issuer   VARCHAR(64) NOT NULL DEFAULT '',
+    to_currency   VARCHAR(64) NOT NULL,
+    to_issuer     VARCHAR(64) NOT NULL DEFAULT '',
+    from_volume   NUMERIC(38, 18) NOT NULL DEFAULT 0,
+    to_volume     NUMERIC(38, 18) NOT NULL DEFAULT 0,
+    xrp_volume    NUMERIC(38, 18) NOT NULL DEFAULT 0,
+    event_count   INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (hour, from_currency, from_issuer, to_currency, to_issuer)
+);
+CREATE INDEX IF NOT EXISTS idx_bridge_buckets_hour ON bridge_hourly_buckets (hour);
