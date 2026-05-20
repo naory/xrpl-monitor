@@ -1,19 +1,24 @@
 const { Router } = require('express');
-const { getBridgeEvents, WINDOWS } = require('../redis/bridgeTimeseries');
+const { queryBridgeBuckets } = require('../db/bridgeBuckets');
 
-function createBridgeRouter({ redis }) {
+function createBridgeRouter({ pool }) {
   const router = Router();
 
-  router.get('/events', async (req, res) => {
-    const { window = '1h' } = req.query;
-    if (!WINDOWS[window]) {
-      return res.status(400).json({ error: `Unknown window. Valid: ${Object.keys(WINDOWS).join(', ')}` });
+  router.get('/buckets', async (req, res) => {
+    const { from, to } = req.query;
+    if (!from || !to) {
+      return res.status(400).json({ error: 'Both "from" and "to" query params are required (ISO 8601)' });
+    }
+    const fromDate = new Date(from);
+    const toDate   = new Date(to);
+    if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime()) || fromDate >= toDate) {
+      return res.status(400).json({ error: '"from" and "to" must be valid ISO 8601 timestamps with from < to' });
     }
     try {
-      const events = await getBridgeEvents(redis, window);
-      res.json({ window, events });
+      const buckets = await queryBridgeBuckets(pool, { from: fromDate, to: toDate });
+      res.json({ from, to, buckets });
     } catch (err) {
-      console.error('[BRIDGE/EVENTS] Error:', err.message);
+      console.error('[BRIDGE/BUCKETS] Error:', err.message);
       res.status(500).json({ error: 'Internal server error' });
     }
   });
