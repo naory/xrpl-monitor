@@ -1,3 +1,4 @@
+require('dotenv').config();
 const pool                        = require('./db/pool');
 const { createRedisClient }       = require('./redis/client');
 const { ensureTopK }              = require('./redis/topk');
