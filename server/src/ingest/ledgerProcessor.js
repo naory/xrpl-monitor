@@ -10,7 +10,7 @@ const { recordAmmVolume, trimAmmWindows, upsertPool } = require('../redis/ammVol
 const { pushLedgerRecord, trimLedgerStats } = require('../redis/ledgerStats');
 const { detectBridges }  = require('./bridgeDetector');
 const { publishBridge }  = require('../redis/publisher');
-const { recordBridgeEvent, trimBridgeEvents } = require('../redis/bridgeTimeseries');
+const { upsertBridgeBuckets } = require('../db/bridgeBuckets');
 
 function initAccumulator() {
   return {
@@ -20,10 +20,17 @@ function initAccumulator() {
   };
 }
 
+function truncateToHour(ledgerTime) {
+  const d = ledgerTime instanceof Date ? new Date(ledgerTime) : new Date(ledgerTime);
+  d.setUTCMinutes(0, 0, 0);
+  return d;
+}
+
 function createLedgerProcessor({ pool, redis, state, hysteresis, pairRegistry, xrplClient }) {
   const subscribedKeys = new Set();
   let previousTopK     = null;
   let acc              = initAccumulator();
+  let bridgeAcc        = new Map();
   let prevClosedAt     = null;
   const seenTxHashes   = new Set();
 
@@ -103,9 +110,20 @@ function createLedgerProcessor({ pool, redis, state, hysteresis, pairRegistry, x
         publishBridge(redis, b).catch((err) => {
           console.error('[BRIDGE] Failed to publish bridge event:', err.message);
         });
-        recordBridgeEvent(redis, b).catch((err) => {
-          console.error('[BRIDGE] Failed to record bridge event:', err.message);
-        });
+        const hour       = truncateToHour(b.ledgerTime);
+        const fromIssuer = b.fromIssuer ?? '';
+        const toIssuer   = b.toIssuer   ?? '';
+        const key        = `${hour.toISOString()}:${b.fromCurrency}:${fromIssuer}:${b.toCurrency}:${toIssuer}`;
+        const entry      = bridgeAcc.get(key) ?? {
+          hour, fromCurrency: b.fromCurrency, fromIssuer,
+          toCurrency: b.toCurrency, toIssuer,
+          fromVolume: 0, toVolume: 0, xrpVolume: 0, eventCount: 0,
+        };
+        entry.fromVolume  += Number(b.fromValue);
+        entry.toVolume    += Number(b.toValue);
+        entry.xrpVolume   += Number(b.xrpValue);
+        entry.eventCount  += 1;
+        bridgeAcc.set(key, entry);
       }
     } catch (err) {
       console.error('[BRIDGE] Detection error:', err.message);
@@ -164,9 +182,13 @@ function createLedgerProcessor({ pool, redis, state, hysteresis, pairRegistry, x
     trimLedgerStats(redis).catch((err) => {
       console.error('[LSTATS] Failed to trim windows:', err.message);
     });
-    trimBridgeEvents(redis).catch((err) => {
-      console.error('[BRIDGE] Failed to trim events:', err.message);
-    });
+    if (bridgeAcc.size > 0) {
+      const rows = [...bridgeAcc.values()];
+      bridgeAcc.clear();
+      upsertBridgeBuckets(pool, rows).catch((err) => {
+        console.error('[BRIDGE] Failed to upsert bridge buckets:', err.message);
+      });
+    }
 
     try {
       const topKPairs = await getTopK(redis);
