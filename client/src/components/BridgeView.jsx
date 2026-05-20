@@ -88,7 +88,7 @@ function flashArc(arcsEl, x1, y1, x2, y2, color) {
 const CHART_W = 420, CHART_H = 72, CHART_PAD_B = 16;
 const OTHER_COLOR = '#444e5a';
 
-function BridgeSparkline({ series, topCurrencies, ringCurrencies, onSeek }) {
+function BridgeSparkline({ series, topCurrencies, ringCurrencies }) {
   if (!series?.length || !topCurrencies?.length) return null;
 
   const allKeys = [...topCurrencies, 'other'];
@@ -101,7 +101,7 @@ function BridgeSparkline({ series, topCurrencies, ringCurrencies, onSeek }) {
   const chartH = CHART_H - CHART_PAD_B;
 
   return (
-    <svg width={CHART_W} height={CHART_H} style={{ display: 'block', cursor: 'pointer' }}>
+    <svg width={CHART_W} height={CHART_H} style={{ display: 'block' }}>
       {series.map((bucket, i) => {
         const total = allKeys.reduce((s, k) => s + (bucket.currencies[k] ?? 0), 0);
         if (total === 0) return null;
@@ -109,7 +109,7 @@ function BridgeSparkline({ series, topCurrencies, ringCurrencies, onSeek }) {
         const x = i * barW + 1;
 
         return (
-          <g key={bucket.ts} onClick={() => onSeek?.(bucket.ts)}>
+          <g key={bucket.ts}>
             {allKeys.map((k) => {
               const val = bucket.currencies[k] ?? 0;
               if (val === 0) return null;
