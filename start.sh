@@ -2,23 +2,32 @@
 set -e
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
+cd "$ROOT"
+
+# Prefer docker compose (v2 plugin) over docker-compose (v1 standalone)
+if docker compose version &>/dev/null 2>&1; then
+  DC="docker compose"
+elif command -v docker-compose &>/dev/null; then
+  DC="docker-compose"
+else
+  echo "[start] Error: neither 'docker compose' nor 'docker-compose' found." >&2
+  exit 1
+fi
 
 # Start infrastructure
 echo "[start] Starting Postgres and Redis..."
-docker compose -f "$ROOT/docker-compose.yml" up -d postgres redis
+$DC up -d postgres redis
 
 # Wait for Postgres
 printf "[start] Waiting for Postgres"
-until docker compose -f "$ROOT/docker-compose.yml" exec -T postgres \
-    pg_isready -U xrpl -d xrpl_monitor -q 2>/dev/null; do
+until $DC exec -T postgres pg_isready -U xrpl -d xrpl_monitor -q 2>/dev/null; do
   printf "."; sleep 1
 done
 echo " ready."
 
 # Wait for Redis
 printf "[start] Waiting for Redis"
-until docker compose -f "$ROOT/docker-compose.yml" exec -T redis \
-    redis-cli ping 2>/dev/null | grep -q PONG; do
+until $DC exec -T redis redis-cli ping 2>/dev/null | grep -q PONG; do
   printf "."; sleep 1
 done
 echo " ready."
@@ -40,7 +49,7 @@ cleanup() {
   echo "[start] Stopping server and client..."
   kill "$SERVER_PID" "$CLIENT_PID" 2>/dev/null || true
   echo "[start] Stopping Postgres and Redis..."
-  docker compose -f "$ROOT/docker-compose.yml" stop postgres redis
+  $DC stop postgres redis
   echo "[start] Done."
 }
 trap cleanup INT TERM
