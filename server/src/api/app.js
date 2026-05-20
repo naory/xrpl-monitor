@@ -15,7 +15,7 @@ function createApp({ pool, redis, state, xrplClient, pairRegistry }) {
   app.use('/fills',  createFillsRouter({ pool, redis }));
   app.use('/amm',    createAmmRouter({ redis }));
   app.use('/ledger', createLedgerRouter({ redis }));
-  app.use('/bridge', createBridgeRouter({ redis }));
+  app.use('/bridge', createBridgeRouter({ pool }));
 
   return app;
 }
