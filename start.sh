@@ -4,6 +4,17 @@ set -e
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT"
 
+# Check Docker daemon is running; start Colima if available
+if ! docker info &>/dev/null 2>&1; then
+  if command -v colima &>/dev/null; then
+    echo "[start] Docker daemon not running — starting Colima..."
+    colima start
+  else
+    echo "[start] Error: Docker daemon is not running." >&2
+    exit 1
+  fi
+fi
+
 # Prefer docker compose (v2 plugin) over docker-compose (v1 standalone)
 if docker compose version &>/dev/null 2>&1; then
   DC="docker compose"
