@@ -77,6 +77,7 @@ function buildXrpDemandMessage(event) {
   return {
     type: 'xrp-demand',
     data: {
+      txHash:      event.txHash,
       currency:    event.currency,
       xrpBought:   String(event.xrpBought),
       xrpSold:     String(event.xrpSold),

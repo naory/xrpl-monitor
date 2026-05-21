@@ -12,8 +12,9 @@ export function useXrpDemandStream() {
     const newItems = [];
 
     for (const event of [...xrpDemands].reverse()) {
-      // Deduplicate by ledgerIndex + currency + amounts (no txHash available)
-      const key = `${event.ledgerIndex}:${event.currency}:${event.xrpBought}:${event.xrpSold}`;
+      const key = event.txHash
+        ? `${event.txHash}:${event.currency}`
+        : `${event.ledgerIndex}:${event.currency}:${event.xrpBought}:${event.xrpSold}`;
       if (seenRef.current.has(key)) continue;
       seenRef.current.add(key);
       if (seenRef.current.size > 200) {

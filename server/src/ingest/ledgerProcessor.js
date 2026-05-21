@@ -21,7 +21,7 @@ function initAccumulator() {
 }
 
 function truncateToHour(ledgerTime) {
-  const d = ledgerTime instanceof Date ? new Date(ledgerTime) : new Date(ledgerTime);
+  const d = new Date(ledgerTime);
   d.setUTCMinutes(0, 0, 0);
   return d;
 }
@@ -105,8 +105,9 @@ function createLedgerProcessor({ pool, redis, state, hysteresis, pairRegistry, x
       });
     }
 
+    const bridges = detectBridges(fills);
+
     try {
-      const bridges = detectBridges(fills);
       for (const b of bridges) {
         publishBridge(redis, b).catch((err) => {
           console.error('[BRIDGE] Failed to publish bridge event:', err.message);
@@ -131,7 +132,7 @@ function createLedgerProcessor({ pool, redis, state, hysteresis, pairRegistry, x
     }
 
     try {
-      if (detectBridges(fills).length === 0) {
+      if (bridges.length === 0) {
         // No autobridging in this tx — capture direct XRP demand per currency
         const txDemand = new Map(); // currency -> { xrpBought, xrpSold, count }
         for (const f of fills) {
@@ -158,7 +159,7 @@ function createLedgerProcessor({ pool, redis, state, hysteresis, pairRegistry, x
           const hour        = truncateToHour(ledgerTime);
           for (const [currency, { xrpBought, xrpSold, count }] of txDemand) {
             if (xrpBought === 0 && xrpSold === 0) continue;
-            publishXrpDemand(redis, { currency, xrpBought, xrpSold, ledgerIndex }).catch((err) => {
+            publishXrpDemand(redis, { txHash, currency, xrpBought, xrpSold, ledgerIndex }).catch((err) => {
               console.error('[XRP_DEMAND] Failed to publish:', err.message);
             });
             const key   = `${hour.toISOString()}:${currency}`;

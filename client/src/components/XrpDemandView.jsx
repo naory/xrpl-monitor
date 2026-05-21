@@ -62,7 +62,7 @@ function animateLeg(svgEl, x1, y1, x2, y2, color, isCancelled) {
         requestAnimationFrame(tick);
       } else {
         svgEl.querySelector('#xd-particles')?.removeChild(dot);
-        svgEl.removeChild(path);
+        if (path.parentNode) svgEl.removeChild(path);
         resolve();
       }
     }

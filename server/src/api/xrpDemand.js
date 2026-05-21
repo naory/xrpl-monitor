@@ -14,6 +14,9 @@ function createXrpDemandRouter({ pool }) {
     if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime()) || fromDate >= toDate) {
       return res.status(400).json({ error: '"from" and "to" must be valid ISO 8601 timestamps with from < to' });
     }
+    if (toDate - fromDate > 48 * 60 * 60 * 1000) {
+      return res.status(400).json({ error: 'Range cannot exceed 48 hours' });
+    }
     try {
       const buckets = await queryXrpDemandBuckets(pool, { from: fromDate, to: toDate });
       res.json({ from, to, buckets });
