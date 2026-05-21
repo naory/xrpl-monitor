@@ -3,12 +3,18 @@ const xrpl = require('xrpl');
 const XRPL_ENDPOINTS = {
   mainnet: 'wss://s1.ripple.com/',
   testnet: 'wss://s.altnet.rippletest.net:51233',
+  devnet:  'wss://s.devnet.rippletest.net:51233',
 };
 
 function resolveEndpoint() {
   const net = process.env.XRPL_NET || 'mainnet';
   if (net.startsWith('ws://') || net.startsWith('wss://')) return net;
   return XRPL_ENDPOINTS[net] ?? XRPL_ENDPOINTS.mainnet;
+}
+
+function resolveNetworkName() {
+  const net = process.env.XRPL_NET || 'mainnet';
+  return XRPL_ENDPOINTS[net] ? net : 'mainnet';
 }
 
 // Normalise raw XRPL ledger close event to a stable internal shape (FF-5).
@@ -21,11 +27,13 @@ function normaliseLedgerClose(event) {
 }
 
 function createXrplConnection({ onTransaction, onLedgerClosed, onStateChange }) {
-  const url = resolveEndpoint();
+  let url = resolveEndpoint();
+  let currentNetworkName = resolveNetworkName();
   let client = null;
   let reconnectDelay = 1000;
   const MAX_DELAY = 30000;
   let stopped = false;
+  let switching = false;
 
   async function connect() {
     if (stopped) return;
@@ -56,9 +64,36 @@ function createXrplConnection({ onTransaction, onLedgerClosed, onStateChange }) 
   }
 
   function scheduleReconnect() {
+    if (switching) return; // intentional disconnect during switch — connect() called directly
     reconnectDelay = Math.min(reconnectDelay * 2, MAX_DELAY);
     console.log(`[XRPL] Reconnecting in ${reconnectDelay / 1000}s...`);
     setTimeout(connect, reconnectDelay);
+  }
+
+  async function switchNetwork(name) {
+    if (!XRPL_ENDPOINTS[name]) {
+      const err = new Error(`Unknown network: ${name}`);
+      err.status = 400;
+      throw err;
+    }
+    if (switching) {
+      const err = new Error('Switch already in progress');
+      err.status = 409;
+      throw err;
+    }
+    switching = true;
+    try {
+      if (client?.isConnected()) await client.disconnect();
+      url = XRPL_ENDPOINTS[name];
+      currentNetworkName = name;
+      await connect();
+    } finally {
+      switching = false;
+    }
+  }
+
+  function getCurrentNetwork() {
+    return currentNetworkName;
   }
 
   // Subscribe to an order book and return the snapshot bids/asks.
@@ -108,7 +143,11 @@ function createXrplConnection({ onTransaction, onLedgerClosed, onStateChange }) 
     if (client?.isConnected()) await client.disconnect();
   }
 
-  return { connect, disconnect, isConnected, request, subscribeOrderBook, unsubscribeOrderBook, requestOrderBook };
+  return {
+    connect, disconnect, isConnected, request,
+    subscribeOrderBook, unsubscribeOrderBook, requestOrderBook,
+    switchNetwork, getCurrentNetwork,
+  };
 }
 
 module.exports = { createXrplConnection };
