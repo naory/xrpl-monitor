@@ -2,6 +2,7 @@ const CHANNELS = {
   FILLS:        'fills',
   TOPK_CHANGED: 'topk:changed',
   BRIDGE:       'bridge:fill',
+  XRP_DEMAND:   'xrpl:xrp-demand',
   BOOK:         (pairKey) => `book:${pairKey}`,
 };
 
@@ -72,12 +73,31 @@ async function publishBridge(redis, bridge) {
   await redis.publish(CHANNELS.BRIDGE, msg);
 }
 
+function buildXrpDemandMessage(event) {
+  return {
+    type: 'xrp-demand',
+    data: {
+      currency:    event.currency,
+      xrpBought:   String(event.xrpBought),
+      xrpSold:     String(event.xrpSold),
+      ledgerIndex: event.ledgerIndex,
+    },
+  };
+}
+
+async function publishXrpDemand(redis, event) {
+  const msg = JSON.stringify(buildXrpDemandMessage(event));
+  await redis.publish(CHANNELS.XRP_DEMAND, msg);
+}
+
 module.exports = {
   CHANNELS,
   buildFillMessage,
   buildTopKChangedMessage,
   buildBridgeMessage,
+  buildXrpDemandMessage,
   publishFill,
   publishTopKChanged,
   publishBridge,
+  publishXrpDemand,
 };
