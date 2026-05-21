@@ -3,16 +3,14 @@ const { extractAmmEvents }                  = require('./ammExtractor');
 const { writeFills }                         = require('../db/fills');
 const { incrementPairs, getTopK }           = require('../redis/topk');
 const { buildRebalancePlan, applyRebalancePlan } = require('./subscriptionManager');
-const { publishFill, publishTopKChanged }   = require('../redis/publisher');
+const { publishFill, publishTopKChanged, publishBridge, publishXrpDemand } = require('../redis/publisher');
 const { recordVolume, trimWindows, detectTopKChange } = require('../redis/volume');
 const { persistPairMeta }                   = require('../redis/pairMeta');
 const { recordAmmVolume, trimAmmWindows, upsertPool } = require('../redis/ammVolume');
 const { pushLedgerRecord, trimLedgerStats } = require('../redis/ledgerStats');
 const { detectBridges }  = require('./bridgeDetector');
-const { publishBridge }  = require('../redis/publisher');
 const { upsertBridgeBuckets } = require('../db/bridgeBuckets');
 const { upsertXrpDemandBuckets } = require('../db/xrpDemandBuckets');
-const { publishXrpDemand }        = require('../redis/publisher');
 
 function initAccumulator() {
   return {
