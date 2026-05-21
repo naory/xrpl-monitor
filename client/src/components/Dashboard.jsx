@@ -5,6 +5,7 @@ import { AmmGrid }       from './AmmGrid';
 import { LedgerStats }   from './LedgerStats';
 import { BridgeView }    from './BridgeView';
 import { XrpDemandView } from './XrpDemandView';
+import { EscrowView }    from './EscrowView';
 import { OrderBook }     from './OrderBook';
 import { PriceChart }    from './PriceChart';
 
@@ -29,6 +30,22 @@ export function Dashboard({ mode, window }) {
       <Box sx={{ display: 'flex', flex: 1, justifyContent: 'center', alignItems: 'flex-start', gap: 1.5, p: 1.5, minHeight: 0, overflow: 'auto' }}>
         <BridgeView />
         <XrpDemandView />
+      </Box>
+    );
+  }
+
+  if (mode === 'escrow-time') {
+    return (
+      <Box sx={{ display: 'flex', flex: 1, justifyContent: 'center', p: 1.5, minHeight: 0, overflow: 'auto' }}>
+        <EscrowView type="time_lock" />
+      </Box>
+    );
+  }
+
+  if (mode === 'escrow-ilp') {
+    return (
+      <Box sx={{ display: 'flex', flex: 1, justifyContent: 'center', p: 1.5, minHeight: 0, overflow: 'auto' }}>
+        <EscrowView type="ilp" />
       </Box>
     );
   }

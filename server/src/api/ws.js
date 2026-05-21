@@ -1,7 +1,7 @@
 const { WebSocketServer } = require('ws');
 const { CHANNELS } = require('../redis/publisher');
 
-const SUBSCRIBED_CHANNELS = [CHANNELS.FILLS, CHANNELS.TOPK_CHANGED, CHANNELS.BRIDGE, CHANNELS.XRP_DEMAND];
+const SUBSCRIBED_CHANNELS = [CHANNELS.FILLS, CHANNELS.TOPK_CHANGED, CHANNELS.BRIDGE, CHANNELS.XRP_DEMAND, CHANNELS.ESCROW];
 
 function createWebSocketServer({ httpServer, redis }) {
   const wss = new WebSocketServer({ server: httpServer });

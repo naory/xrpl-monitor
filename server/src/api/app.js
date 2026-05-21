@@ -6,6 +6,7 @@ const { createAmmRouter }    = require('./amm');
 const { createLedgerRouter } = require('./ledger');
 const { createBridgeRouter } = require('./bridge');
 const { createXrpDemandRouter } = require('./xrpDemand');
+const { createEscrowRouter }    = require('./escrow');
 
 function createApp({ pool, redis, state, xrplClient, pairRegistry }) {
   const app = express();
@@ -18,6 +19,7 @@ function createApp({ pool, redis, state, xrplClient, pairRegistry }) {
   app.use('/ledger',     createLedgerRouter({ redis }));
   app.use('/bridge',     createBridgeRouter({ pool }));
   app.use('/xrp-demand', createXrpDemandRouter({ pool }));
+  app.use('/escrow',     createEscrowRouter({ pool }));
 
   return app;
 }
