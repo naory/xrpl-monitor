@@ -77,6 +77,87 @@ function createLedgerProcessor({ pool, redis, state, hysteresis, pairRegistry, x
     }
 
     const fills = extractFills(event);
+
+    try {
+      const escrowEvents = extractEscrows(event);
+      for (const ev of escrowEvents) {
+        const hour = truncateToHour(ev.ledgerTime);
+
+        if (ev.txType === 'EscrowCreate') {
+          // Store in Redis for TTF lookup when Finish/Cancel arrives
+          const redisKey = `escrow:ttf:${ev.account}:${ev.sequence}`;
+          const payload  = JSON.stringify({ type: ev.type, amountDrops: ev.amountDrops, createdAtMs: ev.ledgerTime.getTime() });
+          redis.set(redisKey, payload, 'EX', 604800).catch(() => {});
+
+          // Accumulate hourly bucket
+          const key   = `${hour.toISOString()}:${ev.type}`;
+          const entry = escrowAcc.get(key) ?? {
+            hour, type: ev.type,
+            creates: 0, finishes: 0, cancels: 0,
+            xrpCreated: 0, xrpFinished: 0, xrpCancelled: 0,
+            ttfLt5s: 0, ttfLt30s: 0, ttfLt5m: 0, ttfLt1h: 0, ttfLt1d: 0, ttfGte1d: 0,
+          };
+          entry.creates++;
+          entry.xrpCreated += ev.amountDrops / 1_000_000;
+          escrowAcc.set(key, entry);
+
+          // Publish live event
+          publishEscrow(redis, {
+            txType: 'EscrowCreate', escrowType: ev.type,
+            txHash: ev.txHash, ledgerIndex: ev.ledgerIndex,
+            amountXrp: ev.amountDrops / 1_000_000,
+            destination: ev.destination,
+          }).catch(() => {});
+
+        } else {
+          // EscrowFinish or EscrowCancel — look up TTF from Redis
+          const redisKey = `escrow:ttf:${ev.owner}:${ev.offerSequence}`;
+          let escrowType = ev.hasFulfillment ? 'ilp' : 'time_lock';
+          let amountXrp  = 0;
+          let ttfMs      = null;
+
+          try {
+            const stored = await redis.get(redisKey);
+            if (stored) {
+              const parsed = JSON.parse(stored);
+              escrowType = parsed.type;
+              amountXrp  = parsed.amountDrops / 1_000_000;
+              ttfMs      = ev.ledgerTime.getTime() - parsed.createdAtMs;
+              await redis.del(redisKey);
+            }
+          } catch (_) {}
+
+          const key   = `${hour.toISOString()}:${escrowType}`;
+          const entry = escrowAcc.get(key) ?? {
+            hour, type: escrowType,
+            creates: 0, finishes: 0, cancels: 0,
+            xrpCreated: 0, xrpFinished: 0, xrpCancelled: 0,
+            ttfLt5s: 0, ttfLt30s: 0, ttfLt5m: 0, ttfLt1h: 0, ttfLt1d: 0, ttfGte1d: 0,
+          };
+
+          if (ev.txType === 'EscrowFinish') {
+            entry.finishes++;
+            entry.xrpFinished += amountXrp;
+            if (ttfMs != null) entry[ttfBucket(ttfMs)]++;
+          } else {
+            entry.cancels++;
+            entry.xrpCancelled += amountXrp;
+          }
+          escrowAcc.set(key, entry);
+
+          publishEscrow(redis, {
+            txType: ev.txType, escrowType,
+            txHash: ev.txHash, ledgerIndex: ev.ledgerIndex,
+            amountXrp: amountXrp || undefined,
+            ttfMs: ttfMs ?? undefined,
+            owner: ev.owner,
+          }).catch(() => {});
+        }
+      }
+    } catch (err) {
+      console.error('[ESCROW] Processing error:', err.message);
+    }
+
     if (!fills.length) return;
 
     state.lastLedgerIndex = event.ledger_index;
@@ -185,86 +266,6 @@ function createLedgerProcessor({ pool, redis, state, hysteresis, pairRegistry, x
       }
     } catch (err) {
       console.error('[XRP_DEMAND] Detection error:', err.message);
-    }
-
-    try {
-      const escrowEvents = extractEscrows(event);
-      for (const ev of escrowEvents) {
-        const hour = truncateToHour(ev.ledgerTime);
-
-        if (ev.txType === 'EscrowCreate') {
-          // Store in Redis for TTF lookup when Finish/Cancel arrives
-          const redisKey = `escrow:ttf:${ev.account}:${ev.sequence}`;
-          const payload  = JSON.stringify({ type: ev.type, amountDrops: ev.amountDrops, createdAtMs: ev.ledgerTime.getTime() });
-          redis.set(redisKey, payload, 'EX', 604800).catch(() => {});
-
-          // Accumulate hourly bucket
-          const key   = `${hour.toISOString()}:${ev.type}`;
-          const entry = escrowAcc.get(key) ?? {
-            hour, type: ev.type,
-            creates: 0, finishes: 0, cancels: 0,
-            xrpCreated: 0, xrpFinished: 0, xrpCancelled: 0,
-            ttfLt5s: 0, ttfLt30s: 0, ttfLt5m: 0, ttfLt1h: 0, ttfLt1d: 0, ttfGte1d: 0,
-          };
-          entry.creates++;
-          entry.xrpCreated += ev.amountDrops / 1_000_000;
-          escrowAcc.set(key, entry);
-
-          // Publish live event
-          publishEscrow(redis, {
-            txType: 'EscrowCreate', escrowType: ev.type,
-            txHash: ev.txHash, ledgerIndex: ev.ledgerIndex,
-            amountXrp: ev.amountDrops / 1_000_000,
-            destination: ev.destination,
-          }).catch(() => {});
-
-        } else {
-          // EscrowFinish or EscrowCancel — look up TTF from Redis
-          const redisKey = `escrow:ttf:${ev.owner}:${ev.offerSequence}`;
-          let escrowType = ev.hasFulfillment ? 'ilp' : 'time_lock';
-          let amountXrp  = 0;
-          let ttfMs      = null;
-
-          try {
-            const stored = await redis.get(redisKey);
-            if (stored) {
-              const parsed = JSON.parse(stored);
-              escrowType = parsed.type;
-              amountXrp  = parsed.amountDrops / 1_000_000;
-              ttfMs      = ev.ledgerTime.getTime() - parsed.createdAtMs;
-              await redis.del(redisKey);
-            }
-          } catch (_) {}
-
-          const key   = `${hour.toISOString()}:${escrowType}`;
-          const entry = escrowAcc.get(key) ?? {
-            hour, type: escrowType,
-            creates: 0, finishes: 0, cancels: 0,
-            xrpCreated: 0, xrpFinished: 0, xrpCancelled: 0,
-            ttfLt5s: 0, ttfLt30s: 0, ttfLt5m: 0, ttfLt1h: 0, ttfLt1d: 0, ttfGte1d: 0,
-          };
-
-          if (ev.txType === 'EscrowFinish') {
-            entry.finishes++;
-            entry.xrpFinished += amountXrp;
-            if (ttfMs != null) entry[ttfBucket(ttfMs)]++;
-          } else {
-            entry.cancels++;
-            entry.xrpCancelled += amountXrp;
-          }
-          escrowAcc.set(key, entry);
-
-          publishEscrow(redis, {
-            txType: ev.txType, escrowType,
-            txHash: ev.txHash, ledgerIndex: ev.ledgerIndex,
-            amountXrp: amountXrp || undefined,
-            ttfMs: ttfMs ?? undefined,
-            owner: ev.owner,
-          }).catch(() => {});
-        }
-      }
-    } catch (err) {
-      console.error('[ESCROW] Processing error:', err.message);
     }
 
     try {
