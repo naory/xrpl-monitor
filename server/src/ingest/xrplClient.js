@@ -71,6 +71,11 @@ function createXrplConnection({ onTransaction, onLedgerClosed, onStateChange }) 
   }
 
   async function switchNetwork(name) {
+    if (stopped) {
+      const err = new Error('Client is stopped');
+      err.status = 409;
+      throw err;
+    }
     if (!XRPL_ENDPOINTS[name]) {
       const err = new Error(`Unknown network: ${name}`);
       err.status = 400;
@@ -86,6 +91,7 @@ function createXrplConnection({ onTransaction, onLedgerClosed, onStateChange }) 
       if (client?.isConnected()) await client.disconnect();
       url = XRPL_ENDPOINTS[name];
       currentNetworkName = name;
+      reconnectDelay = 1000;
       await connect();
     } finally {
       switching = false;
