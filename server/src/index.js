@@ -2,6 +2,7 @@ require('dotenv').config();
 const pool                        = require('./db/pool');
 const { createRedisClient }       = require('./redis/client');
 const { ensureTopK }              = require('./redis/topk');
+const { runMigrations }           = require('./db/migrate');
 const { getLastLedgerIndex }      = require('./db/fills');
 const { loadAllPairMeta }         = require('./redis/pairMeta');
 const { createXrplConnection }    = require('./ingest/xrplClient');
@@ -19,6 +20,9 @@ async function main() {
 
   await ensureTopK(redis);
   console.log('[Redis] TopK structure ready');
+
+  await runMigrations(pool);
+
 
   // FF-7: restore pair registry from Redis so subscriptions survive restarts
   const savedMeta = await loadAllPairMeta(redis);
