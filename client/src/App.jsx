@@ -8,7 +8,8 @@ import { Dashboard } from './components/Dashboard';
 const WS_URL = import.meta.env.VITE_WS_URL
   ?? `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws`;
 
-const MODES   = ['iou', 'mpt', 'amm', 'ledger', 'bridge'];
+const MODES       = ['iou', 'mpt', 'amm', 'ledger', 'xrp-flow'];
+const MODE_LABELS = { 'xrp-flow': 'XRP FLOW' };
 const WINDOWS = ['10m', '1h', '24h'];
 
 export function App() {
@@ -44,7 +45,7 @@ export function App() {
             onChange={(_, v) => v && setMode(v)} sx={{ height: 26 }}>
             {MODES.map((m) => (
               <ToggleButton key={m} value={m} sx={{ fontSize: '0.65rem', px: 1.5, py: 0, letterSpacing: 0.5 }}>
-                {m.toUpperCase()}
+                {MODE_LABELS[m] ?? m.toUpperCase()}
               </ToggleButton>
             ))}
           </ToggleButtonGroup>

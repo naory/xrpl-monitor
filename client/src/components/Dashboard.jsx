@@ -4,6 +4,7 @@ import { PairGrid }      from './PairGrid';
 import { AmmGrid }       from './AmmGrid';
 import { LedgerStats }   from './LedgerStats';
 import { BridgeView }    from './BridgeView';
+import { XrpDemandView } from './XrpDemandView';
 import { OrderBook }     from './OrderBook';
 import { PriceChart }    from './PriceChart';
 
@@ -23,10 +24,11 @@ export function Dashboard({ mode, window }) {
     );
   }
 
-  if (mode === 'bridge') {
+  if (mode === 'xrp-flow') {
     return (
-      <Box sx={{ flex: 1, p: 1.5, minHeight: 0, overflow: 'auto', display: 'flex', justifyContent: 'center' }}>
+      <Box sx={{ display: 'flex', flex: 1, gap: 1.5, p: 1.5, minHeight: 0, overflow: 'auto' }}>
         <BridgeView />
+        <XrpDemandView />
       </Box>
     );
   }
