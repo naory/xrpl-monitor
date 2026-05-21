@@ -42,3 +42,11 @@ export function fetchXrpDemandBuckets(from, to) {
 export function fetchEscrowBuckets(typeSlug, from, to) {
   return api.get(`/escrow/${typeSlug}/buckets`, { params: { from, to } }).then((r) => r.data);
 }
+
+export function fetchCurrentNetwork() {
+  return api.get('/network').then((r) => r.data);
+}
+
+export function switchNetwork(network) {
+  return api.post('/network/switch', { network }).then((r) => r.data);
+}

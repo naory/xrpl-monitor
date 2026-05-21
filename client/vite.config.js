@@ -15,6 +15,7 @@ export default defineConfig({
       '/bridge':      { target: 'http://127.0.0.1:3001', changeOrigin: true },
       '/xrp-demand':  { target: 'http://127.0.0.1:3001', changeOrigin: true },
       '/escrow':      { target: 'http://127.0.0.1:3001', changeOrigin: true },
+      '/network':     { target: 'http://127.0.0.1:3001', changeOrigin: true },
       '/ws':     { target: 'ws://127.0.0.1:3001', ws: true },
     },
   },
