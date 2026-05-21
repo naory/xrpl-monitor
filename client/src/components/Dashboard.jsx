@@ -26,7 +26,7 @@ export function Dashboard({ mode, window }) {
 
   if (mode === 'xrp-flow') {
     return (
-      <Box sx={{ display: 'flex', flex: 1, gap: 1.5, p: 1.5, minHeight: 0, overflow: 'auto' }}>
+      <Box sx={{ display: 'flex', flex: 1, justifyContent: 'center', alignItems: 'flex-start', gap: 1.5, p: 1.5, minHeight: 0, overflow: 'auto' }}>
         <BridgeView />
         <XrpDemandView />
       </Box>
