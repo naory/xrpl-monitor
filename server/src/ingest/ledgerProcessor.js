@@ -122,7 +122,7 @@ function createLedgerProcessor({ pool, redis, state, hysteresis, pairRegistry, x
               const parsed = JSON.parse(stored);
               escrowType = parsed.type;
               amountXrp  = parsed.amountDrops / 1_000_000;
-              ttfMs      = ev.ledgerTime.getTime() - parsed.createdAtMs;
+              ttfMs      = Math.max(0, ev.ledgerTime.getTime() - parsed.createdAtMs);
               await redis.del(redisKey);
             }
           } catch (_) {}

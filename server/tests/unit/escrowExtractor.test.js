@@ -108,4 +108,11 @@ describe('extractEscrows', () => {
     const [r] = extractEscrows(event);
     expect(r.sequence).toBe(99);
   });
+
+  it('sets amountDrops to 0 for non-XRP (IOU) amount', () => {
+    const event = baseEvent();
+    event.tx_json.Amount = { currency: 'USD', issuer: 'rIssuer', value: '100' };
+    const [r] = extractEscrows(event);
+    expect(r.amountDrops).toBe(0);
+  });
 });
