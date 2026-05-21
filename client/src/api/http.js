@@ -38,3 +38,7 @@ export function fetchBridgeBuckets(from, to) {
 export function fetchXrpDemandBuckets(from, to) {
   return api.get('/xrp-demand/buckets', { params: { from, to } }).then((r) => r.data);
 }
+
+export function fetchEscrowBuckets(typeSlug, from, to) {
+  return api.get(`/escrow/${typeSlug}/buckets`, { params: { from, to } }).then((r) => r.data);
+}
