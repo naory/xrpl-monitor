@@ -5,17 +5,19 @@ const { createFillsRouter }  = require('./fills');
 const { createAmmRouter }    = require('./amm');
 const { createLedgerRouter } = require('./ledger');
 const { createBridgeRouter } = require('./bridge');
+const { createXrpDemandRouter } = require('./xrpDemand');
 
 function createApp({ pool, redis, state, xrplClient, pairRegistry }) {
   const app = express();
   app.use(express.json());
 
-  app.use('/health', createHealthRouter({ state, pool, redis }));
-  app.use('/book',   createBookRouter({ redis, xrplClient, pairRegistry }));
-  app.use('/fills',  createFillsRouter({ pool, redis }));
-  app.use('/amm',    createAmmRouter({ redis }));
-  app.use('/ledger', createLedgerRouter({ redis }));
-  app.use('/bridge', createBridgeRouter({ pool }));
+  app.use('/health',     createHealthRouter({ state, pool, redis }));
+  app.use('/book',       createBookRouter({ redis, xrplClient, pairRegistry }));
+  app.use('/fills',      createFillsRouter({ pool, redis }));
+  app.use('/amm',        createAmmRouter({ redis }));
+  app.use('/ledger',     createLedgerRouter({ redis }));
+  app.use('/bridge',     createBridgeRouter({ pool }));
+  app.use('/xrp-demand', createXrpDemandRouter({ pool }));
 
   return app;
 }
