@@ -11,6 +11,8 @@ const { pushLedgerRecord, trimLedgerStats } = require('../redis/ledgerStats');
 const { detectBridges }  = require('./bridgeDetector');
 const { publishBridge }  = require('../redis/publisher');
 const { upsertBridgeBuckets } = require('../db/bridgeBuckets');
+const { upsertXrpDemandBuckets } = require('../db/xrpDemandBuckets');
+const { publishXrpDemand }        = require('../redis/publisher');
 
 function initAccumulator() {
   return {
@@ -31,6 +33,7 @@ function createLedgerProcessor({ pool, redis, state, hysteresis, pairRegistry, x
   let previousTopK     = null;
   let acc              = initAccumulator();
   let bridgeAcc        = new Map();
+  let xrpDemandAcc     = new Map();
   let prevClosedAt     = null;
   const seenTxHashes   = new Set();
 
@@ -130,6 +133,50 @@ function createLedgerProcessor({ pool, redis, state, hysteresis, pairRegistry, x
     }
 
     try {
+      if (detectBridges(fills).length === 0) {
+        // No autobridging in this tx — capture direct XRP demand per currency
+        const txDemand = new Map(); // currency -> { xrpBought, xrpSold, count }
+        for (const f of fills) {
+          let currency  = null;
+          let xrpBought = 0;
+          let xrpSold   = 0;
+          if (f.getsCurrency === 'XRP' && f.paysCurrency !== 'XRP') {
+            currency  = f.paysCurrency;
+            xrpBought = parseFloat(f.getsValue) || 0;
+          } else if (f.paysCurrency === 'XRP' && f.getsCurrency !== 'XRP') {
+            currency = f.getsCurrency;
+            xrpSold  = parseFloat(f.paysValue) || 0;
+          }
+          if (!currency || currency === 'XRP') continue;
+          const e = txDemand.get(currency) ?? { xrpBought: 0, xrpSold: 0, count: 0 };
+          e.xrpBought += xrpBought;
+          e.xrpSold   += xrpSold;
+          e.count     += 1;
+          txDemand.set(currency, e);
+        }
+        if (txDemand.size > 0) {
+          const ledgerTime  = fills[0]?.ledgerTime;
+          const ledgerIndex = fills[0]?.ledgerIndex;
+          const hour        = truncateToHour(ledgerTime);
+          for (const [currency, { xrpBought, xrpSold, count }] of txDemand) {
+            if (xrpBought === 0 && xrpSold === 0) continue;
+            publishXrpDemand(redis, { currency, xrpBought, xrpSold, ledgerIndex }).catch((err) => {
+              console.error('[XRP_DEMAND] Failed to publish:', err.message);
+            });
+            const key   = `${hour.toISOString()}:${currency}`;
+            const entry = xrpDemandAcc.get(key) ?? { hour, currency, xrpBought: 0, xrpSold: 0, eventCount: 0 };
+            entry.xrpBought += xrpBought;
+            entry.xrpSold   += xrpSold;
+            entry.eventCount += count;
+            xrpDemandAcc.set(key, entry);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[XRP_DEMAND] Detection error:', err.message);
+    }
+
+    try {
       const ammEvents = extractAmmEvents(event);
       if (ammEvents.length) {
         for (const ev of ammEvents) {
@@ -187,6 +234,13 @@ function createLedgerProcessor({ pool, redis, state, hysteresis, pairRegistry, x
       bridgeAcc.clear();
       upsertBridgeBuckets(pool, rows).catch((err) => {
         console.error('[BRIDGE] Failed to upsert bridge buckets:', err.message);
+      });
+    }
+    if (xrpDemandAcc.size > 0) {
+      const rows = [...xrpDemandAcc.values()];
+      xrpDemandAcc.clear();
+      upsertXrpDemandBuckets(pool, rows).catch((err) => {
+        console.error('[XRP_DEMAND] Failed to upsert demand buckets:', err.message);
       });
     }
 
