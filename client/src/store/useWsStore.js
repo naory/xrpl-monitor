@@ -101,6 +101,11 @@ export const useWsStore = create((set) => ({
 
   setNetwork: (network) => set(() => ({
     currentNetwork: network,
+    fills: [],
+    bridges: [],
+    xrpDemands: [],
     escrowEvents: [],
+    topK: [],
+    liveBuckets: {},
   })),
 }));

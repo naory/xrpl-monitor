@@ -21,7 +21,7 @@ function createApp({ pool, redis, state, xrplClient, pairRegistry }) {
   app.use('/bridge',     createBridgeRouter({ pool }));
   app.use('/xrp-demand', createXrpDemandRouter({ pool }));
   app.use('/escrow',     createEscrowRouter({ pool }));
-  app.use('/network',    createNetworkRouter({ xrplClient, redis }));
+  app.use('/network',    createNetworkRouter({ xrplClient, redis, state }));
 
   return app;
 }

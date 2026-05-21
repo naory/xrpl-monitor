@@ -10,7 +10,7 @@ function validateNetworkName(name) {
   return null;
 }
 
-function createNetworkRouter({ xrplClient, redis }) {
+function createNetworkRouter({ xrplClient, redis, state }) {
   const router = Router();
 
   router.get('/', (req, res) => {
@@ -24,6 +24,11 @@ function createNetworkRouter({ xrplClient, redis }) {
 
     try {
       await xrplClient.switchNetwork(network);
+      if (state) {
+        state.lastKnownLedger = null;
+        state.lastLedgerIndex = null;
+        state.currentLedger   = null;
+      }
       await publishNetworkChange(redis, network).catch((e) => {
         console.error('[network] Failed to publish network_change event:', e);
       });
