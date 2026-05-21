@@ -34,3 +34,7 @@ export function fetchLedgerStats(window) {
 export function fetchBridgeBuckets(from, to) {
   return api.get('/bridge/buckets', { params: { from, to } }).then((r) => r.data);
 }
+
+export function fetchXrpDemandBuckets(from, to) {
+  return api.get('/xrp-demand/buckets', { params: { from, to } }).then((r) => r.data);
+}

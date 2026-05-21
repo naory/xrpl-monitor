@@ -32,6 +32,7 @@ export function createSocketConnection(url, store) {
       if (msg.type === 'fill')          store.addFill(msg.data);
       if (msg.type === 'topk:changed')  store.setTopK(msg.data.pairs ?? []);
       if (msg.type === 'bridge:fill')   store.addBridge(msg.data);
+      if (msg.type === 'xrp-demand')    store.addXrpDemand(msg.data);
     };
   }
 

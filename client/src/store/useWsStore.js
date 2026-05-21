@@ -2,6 +2,7 @@ import { create } from 'zustand';
 
 const MAX_FILLS = 50;
 const MAX_BRIDGES = 100;
+const MAX_XRP_DEMANDS = 200;
 const BUCKET_SECONDS = 30;
 
 function bucketEpoch(dateMs) {
@@ -47,6 +48,7 @@ export const useWsStore = create((set) => ({
   selectedPair: null,
   connected:    false,
   bridges:      [],
+  xrpDemands:   [],
   // { [pairKey]: { [bucketEpoch]: { fills: [], candle: {} } } }
   liveBuckets:  {},
 
@@ -87,4 +89,7 @@ export const useWsStore = create((set) => ({
 
   addBridge: (bridge) =>
     set((s) => ({ bridges: [bridge, ...s.bridges].slice(0, MAX_BRIDGES) })),
+
+  addXrpDemand: (event) =>
+    set((s) => ({ xrpDemands: [event, ...s.xrpDemands].slice(0, MAX_XRP_DEMANDS) })),
 }));
