@@ -31,14 +31,14 @@ $DC up -d postgres redis
 
 # Wait for Postgres
 printf "[start] Waiting for Postgres"
-until $DC exec -T postgres pg_isready -U xrpl -d xrpl_monitor -q 2>/dev/null; do
+until docker exec xrpl_monitor_pg pg_isready -U xrpl -d xrpl_monitor -q 2>/dev/null; do
   printf "."; sleep 1
 done
 echo " ready."
 
 # Wait for Redis
 printf "[start] Waiting for Redis"
-until $DC exec -T redis redis-cli ping 2>/dev/null | grep -q PONG; do
+until docker exec xrpl_monitor_redis redis-cli ping 2>/dev/null | grep -q PONG; do
   printf "."; sleep 1
 done
 echo " ready."
@@ -53,15 +53,14 @@ echo "[start] Starting client (port 3000)..."
 (cd "$ROOT/client" && npm run dev) &
 CLIENT_PID=$!
 
-echo "[start] All components running. Ctrl+C to stop."
+echo "[start] All components running. Ctrl+C to stop server+client (Postgres/Redis keep running)."
+echo "[start] To stop infrastructure: docker stop xrpl_monitor_pg xrpl_monitor_redis"
 
 cleanup() {
   echo ""
   echo "[start] Stopping server and client..."
   kill "$SERVER_PID" "$CLIENT_PID" 2>/dev/null || true
-  echo "[start] Stopping Postgres and Redis..."
-  $DC stop postgres redis
-  echo "[start] Done."
+  echo "[start] Done. Postgres and Redis are still running."
 }
 trap cleanup INT TERM
 
