@@ -8,8 +8,12 @@ import { Dashboard } from './components/Dashboard';
 const WS_URL = import.meta.env.VITE_WS_URL
   ?? `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws`;
 
-const MODES       = ['iou', 'mpt', 'amm', 'ledger', 'xrp-flow'];
-const MODE_LABELS = { 'xrp-flow': 'XRP FLOW' };
+const MODES       = ['iou', 'mpt', 'amm', 'ledger', 'xrp-flow', 'escrow-time', 'escrow-ilp'];
+const MODE_LABELS = {
+  'xrp-flow':    'XRP FLOW',
+  'escrow-time': 'ESCROW TIME',
+  'escrow-ilp':  'ESCROW ILP',
+};
 const WINDOWS = ['10m', '1h', '24h'];
 
 export function App() {
