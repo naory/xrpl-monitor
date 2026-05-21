@@ -56,7 +56,11 @@ export function App() {
       clearTimeout(switchTimerRef.current);
       setPendingNetwork(null);
     }
-  }, [currentNetwork]);
+  }, [currentNetwork, pendingNetwork]);
+
+  useEffect(() => {
+    return () => clearTimeout(switchTimerRef.current);
+  }, []);
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', bgcolor: 'background.default' }}>
