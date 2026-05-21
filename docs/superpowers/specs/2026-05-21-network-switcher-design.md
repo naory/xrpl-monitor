@@ -102,7 +102,7 @@ If xrpl.js v4 does not support URL reassignment cleanly, destroy the old client 
 ### WebSocket Event (published after successful reconnect)
 
 ```json
-{ "type": "network_change", "network": "testnet" }
+{ "type": "network_change", "data": { "network": "testnet" } }
 ```
 
 ### Health Endpoint
@@ -122,7 +122,7 @@ If xrpl.js v4 does not support URL reassignment cleanly, destroy the old client 
 |------|--------|
 | `client/src/api/http.js` | Add `fetchCurrentNetwork()` → `GET /network`; `switchNetwork(network)` → `POST /network/switch` |
 | `client/src/store/useWsStore.js` | Add `currentNetwork: 'mainnet'`; `setNetwork(network)` — updates field and clears `escrowEvents: []` (and any other live arrays) atomically |
-| `client/src/api/socket.js` | Route `msg.type === 'network_change'` → `store.setNetwork(msg.network)` |
+| `client/src/api/socket.js` | Route `msg.type === 'network_change'` → `store.setNetwork(msg.data.network)` |
 | `client/src/App.jsx` | On mount, call `fetchCurrentNetwork()` → `store.setNetwork(network)`; render network selector in header |
 | `client/vite.config.js` | Add `/network` proxy entry → `http://127.0.0.1:3001` |
 
