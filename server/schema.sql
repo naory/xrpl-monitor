@@ -35,3 +35,13 @@ CREATE TABLE IF NOT EXISTS bridge_hourly_buckets (
     PRIMARY KEY (hour, from_currency, from_issuer, to_currency, to_issuer)
 );
 CREATE INDEX IF NOT EXISTS idx_bridge_buckets_hour ON bridge_hourly_buckets (hour);
+
+CREATE TABLE IF NOT EXISTS xrp_demand_hourly (
+    hour        TIMESTAMP NOT NULL,
+    currency    VARCHAR(64) NOT NULL,
+    xrp_bought  NUMERIC(38,18) NOT NULL DEFAULT 0,
+    xrp_sold    NUMERIC(38,18) NOT NULL DEFAULT 0,
+    event_count INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (hour, currency)
+);
+CREATE INDEX IF NOT EXISTS idx_xrp_demand_hour ON xrp_demand_hourly (hour);
