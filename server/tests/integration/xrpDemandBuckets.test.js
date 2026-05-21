@@ -43,7 +43,7 @@ function makeRow(overrides = {}) {
 
 describe('upsertXrpDemandBuckets', () => {
   it('inserts a new bucket row', async () => {
-    if (!dbAvailable) return;
+    if (!dbAvailable) return test.skip();
     await upsertXrpDemandBuckets(pool, [makeRow()]);
     const { rows } = await pool.query('SELECT * FROM xrp_demand_hourly');
     expect(rows).toHaveLength(1);
@@ -54,7 +54,7 @@ describe('upsertXrpDemandBuckets', () => {
   });
 
   it('accumulates volumes on conflict (same bucket, second upsert)', async () => {
-    if (!dbAvailable) return;
+    if (!dbAvailable) return test.skip();
     await upsertXrpDemandBuckets(pool, [makeRow()]);
     await upsertXrpDemandBuckets(pool, [makeRow()]);
     const { rows } = await pool.query('SELECT * FROM xrp_demand_hourly');
@@ -65,7 +65,7 @@ describe('upsertXrpDemandBuckets', () => {
   });
 
   it('inserts multiple rows (different currencies) in one call', async () => {
-    if (!dbAvailable) return;
+    if (!dbAvailable) return test.skip();
     await upsertXrpDemandBuckets(pool, [
       makeRow({ currency: 'USD' }),
       makeRow({ currency: 'EUR', xrpBought: 50, xrpSold: 75 }),
@@ -77,7 +77,7 @@ describe('upsertXrpDemandBuckets', () => {
   });
 
   it('is a no-op for an empty array', async () => {
-    if (!dbAvailable) return;
+    if (!dbAvailable) return test.skip();
     await expect(upsertXrpDemandBuckets(pool, [])).resolves.not.toThrow();
     const { rows } = await pool.query('SELECT * FROM xrp_demand_hourly');
     expect(rows).toHaveLength(0);
@@ -86,7 +86,7 @@ describe('upsertXrpDemandBuckets', () => {
 
 describe('queryXrpDemandBuckets', () => {
   it('returns rows within the requested range', async () => {
-    if (!dbAvailable) return;
+    if (!dbAvailable) return test.skip();
     await upsertXrpDemandBuckets(pool, [
       makeRow({ hour: HOUR }),
       makeRow({ hour: NEXT_HOUR, currency: 'EUR' }),
@@ -97,7 +97,7 @@ describe('queryXrpDemandBuckets', () => {
   });
 
   it('returns rows in ascending hour order', async () => {
-    if (!dbAvailable) return;
+    if (!dbAvailable) return test.skip();
     await upsertXrpDemandBuckets(pool, [
       makeRow({ hour: NEXT_HOUR }),
       makeRow({ hour: HOUR }),
@@ -109,7 +109,7 @@ describe('queryXrpDemandBuckets', () => {
   });
 
   it('returns camelCase column aliases', async () => {
-    if (!dbAvailable) return;
+    if (!dbAvailable) return test.skip();
     await upsertXrpDemandBuckets(pool, [makeRow()]);
     const rows = await queryXrpDemandBuckets(pool, {
       from: HOUR, to: new Date('2026-05-20T16:00:00Z'),
@@ -121,7 +121,7 @@ describe('queryXrpDemandBuckets', () => {
   });
 
   it('returns empty array when no rows in range', async () => {
-    if (!dbAvailable) return;
+    if (!dbAvailable) return test.skip();
     const rows = await queryXrpDemandBuckets(pool, { from: HOUR, to: NEXT_HOUR });
     expect(rows).toEqual([]);
   });
