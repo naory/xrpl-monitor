@@ -20,7 +20,7 @@ function extractEscrows(event) {
       ledgerTime,
       type:        hasCondition ? 'ilp' : 'time_lock',
       account:     event.tx_json.Account,
-      sequence:    event.tx_json.Sequence,
+      sequence:    event.tx_json.TicketSequence ?? event.tx_json.Sequence,
       destination: event.tx_json.Destination,
       amountDrops: parseInt(event.tx_json.Amount ?? '0', 10),
       finishAfter: event.tx_json.FinishAfter ?? null,

@@ -100,4 +100,12 @@ describe('extractEscrows', () => {
     expect(r.owner).toBe('rOwner');
     expect(r.offerSequence).toBe(7);
   });
+
+  it('uses TicketSequence when Sequence is 0', () => {
+    const event = baseEvent();
+    event.tx_json.Sequence = 0;
+    event.tx_json.TicketSequence = 99;
+    const [r] = extractEscrows(event);
+    expect(r.sequence).toBe(99);
+  });
 });

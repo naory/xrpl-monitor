@@ -87,7 +87,7 @@ function createLedgerProcessor({ pool, redis, state, hysteresis, pairRegistry, x
           // Store in Redis for TTF lookup when Finish/Cancel arrives
           const redisKey = `escrow:ttf:${ev.account}:${ev.sequence}`;
           const payload  = JSON.stringify({ type: ev.type, amountDrops: ev.amountDrops, createdAtMs: ev.ledgerTime.getTime() });
-          redis.set(redisKey, payload, 'EX', 604800).catch(() => {});
+          redis.set(redisKey, payload, 'EX', 604800 /* 7 days — escrows older than this fall back to hasFulfillment classification */).catch(() => {});
 
           // Accumulate hourly bucket
           const key   = `${hour.toISOString()}:${ev.type}`;
@@ -148,7 +148,7 @@ function createLedgerProcessor({ pool, redis, state, hysteresis, pairRegistry, x
           publishEscrow(redis, {
             txType: ev.txType, escrowType,
             txHash: ev.txHash, ledgerIndex: ev.ledgerIndex,
-            amountXrp: amountXrp || undefined,
+            amountXrp: amountXrp > 0 ? amountXrp : undefined,
             ttfMs: ttfMs ?? undefined,
             owner: ev.owner,
           }).catch(() => {});
