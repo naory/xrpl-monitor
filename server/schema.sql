@@ -45,3 +45,22 @@ CREATE TABLE IF NOT EXISTS xrp_demand_hourly (
     PRIMARY KEY (hour, currency)
 );
 CREATE INDEX IF NOT EXISTS idx_xrp_demand_hour ON xrp_demand_hourly (hour);
+
+CREATE TABLE IF NOT EXISTS escrow_hourly (
+    hour          TIMESTAMP NOT NULL,
+    type          VARCHAR(16) NOT NULL,
+    creates       INTEGER NOT NULL DEFAULT 0,
+    finishes      INTEGER NOT NULL DEFAULT 0,
+    cancels       INTEGER NOT NULL DEFAULT 0,
+    xrp_created   NUMERIC(38,18) NOT NULL DEFAULT 0,
+    xrp_finished  NUMERIC(38,18) NOT NULL DEFAULT 0,
+    xrp_cancelled NUMERIC(38,18) NOT NULL DEFAULT 0,
+    ttf_lt_5s     INTEGER NOT NULL DEFAULT 0,
+    ttf_lt_30s    INTEGER NOT NULL DEFAULT 0,
+    ttf_lt_5m     INTEGER NOT NULL DEFAULT 0,
+    ttf_lt_1h     INTEGER NOT NULL DEFAULT 0,
+    ttf_lt_1d     INTEGER NOT NULL DEFAULT 0,
+    ttf_gte_1d    INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (hour, type)
+);
+CREATE INDEX IF NOT EXISTS idx_escrow_hourly_hour ON escrow_hourly (hour);
