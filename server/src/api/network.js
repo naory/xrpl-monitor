@@ -24,9 +24,12 @@ function createNetworkRouter({ xrplClient, redis }) {
 
     try {
       await xrplClient.switchNetwork(network);
-      await publishNetworkChange(redis, network);
+      await publishNetworkChange(redis, network).catch((e) => {
+        console.error('[network] Failed to publish network_change event:', e);
+      });
       res.json({ network });
     } catch (e) {
+      if (!e.status) console.error('[network] POST /switch unexpected error:', e);
       res.status(e.status ?? 500).json({ error: e.message });
     }
   });
