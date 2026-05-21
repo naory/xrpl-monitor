@@ -29,11 +29,12 @@ export function createSocketConnection(url, store) {
     ws.onmessage = ({ data }) => {
       const msg = parseWsMessage(data);
       if (!msg) return;
-      if (msg.type === 'fill')          store.addFill(msg.data);
-      if (msg.type === 'topk:changed')  store.setTopK(msg.data.pairs ?? []);
-      if (msg.type === 'bridge:fill')   store.addBridge(msg.data);
-      if (msg.type === 'xrp-demand')    store.addXrpDemand(msg.data);
-      if (msg.type === 'escrow')        store.addEscrowEvent(msg.data);
+      if (msg.type === 'fill')           store.addFill(msg.data);
+      if (msg.type === 'topk:changed')   store.setTopK(msg.data.pairs ?? []);
+      if (msg.type === 'bridge:fill')    store.addBridge(msg.data);
+      if (msg.type === 'xrp-demand')     store.addXrpDemand(msg.data);
+      if (msg.type === 'escrow')         store.addEscrowEvent(msg.data);
+      if (msg.type === 'network_change') store.setNetwork(msg.data.network);
     };
   }
 
