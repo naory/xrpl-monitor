@@ -3,6 +3,7 @@ const CHANNELS = {
   TOPK_CHANGED: 'topk:changed',
   BRIDGE:       'bridge:fill',
   XRP_DEMAND:   'xrpl:xrp-demand',
+  ESCROW:       'xrpl:escrow',
   BOOK:         (pairKey) => `book:${pairKey}`,
 };
 
@@ -91,14 +92,37 @@ async function publishXrpDemand(redis, event) {
   await redis.publish(CHANNELS.XRP_DEMAND, msg);
 }
 
+function buildEscrowMessage(event) {
+  return {
+    type: 'escrow',
+    data: {
+      txType:      event.txType,
+      escrowType:  event.escrowType,
+      txHash:      event.txHash,
+      ledgerIndex: event.ledgerIndex,
+      amountXrp:   event.amountXrp != null ? String(event.amountXrp) : undefined,
+      ttfMs:       event.ttfMs,
+      owner:       event.owner,
+      destination: event.destination,
+    },
+  };
+}
+
+async function publishEscrow(redis, event) {
+  const msg = JSON.stringify(buildEscrowMessage(event));
+  await redis.publish(CHANNELS.ESCROW, msg);
+}
+
 module.exports = {
   CHANNELS,
   buildFillMessage,
   buildTopKChangedMessage,
   buildBridgeMessage,
   buildXrpDemandMessage,
+  buildEscrowMessage,
   publishFill,
   publishTopKChanged,
   publishBridge,
   publishXrpDemand,
+  publishEscrow,
 };
