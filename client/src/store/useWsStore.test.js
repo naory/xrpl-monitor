@@ -1,7 +1,7 @@
 import { useWsStore } from './useWsStore';
 
 const reset = () =>
-  useWsStore.setState({ fills: [], topK: [], selectedPair: null, connected: false, bridges: [], liveBuckets: {} });
+  useWsStore.setState({ fills: [], topK: [], selectedPair: null, connected: false, bridges: [], liveBuckets: {}, currentNetwork: 'mainnet', escrowEvents: [], xrpDemands: [] });
 
 beforeEach(reset);
 
@@ -82,5 +82,24 @@ describe('addBridge', () => {
   it('does not affect fills', () => {
     useWsStore.getState().addBridge(makeBridge());
     expect(useWsStore.getState().fills).toHaveLength(0);
+  });
+});
+
+describe('setNetwork', () => {
+  beforeEach(() => {
+    useWsStore.setState({
+      currentNetwork: 'mainnet',
+      escrowEvents: [{ txType: 'EscrowCreate' }, { txType: 'EscrowFinish' }],
+    });
+  });
+
+  it('updates currentNetwork', () => {
+    useWsStore.getState().setNetwork('testnet');
+    expect(useWsStore.getState().currentNetwork).toBe('testnet');
+  });
+
+  it('clears escrowEvents on network switch', () => {
+    useWsStore.getState().setNetwork('testnet');
+    expect(useWsStore.getState().escrowEvents).toHaveLength(0);
   });
 });

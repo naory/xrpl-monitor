@@ -51,6 +51,7 @@ export const useWsStore = create((set) => ({
   bridges:      [],
   xrpDemands:   [],
   escrowEvents: [],
+  currentNetwork: 'mainnet',
   // { [pairKey]: { [bucketEpoch]: { fills: [], candle: {} } } }
   liveBuckets:  {},
 
@@ -97,4 +98,14 @@ export const useWsStore = create((set) => ({
 
   addEscrowEvent: (event) =>
     set((s) => ({ escrowEvents: [event, ...s.escrowEvents].slice(0, MAX_ESCROW_EVENTS) })),
+
+  setNetwork: (network) => set(() => ({
+    currentNetwork: network,
+    fills: [],
+    bridges: [],
+    xrpDemands: [],
+    escrowEvents: [],
+    topK: [],
+    liveBuckets: {},
+  })),
 }));

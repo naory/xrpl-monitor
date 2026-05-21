@@ -76,3 +76,25 @@ describe('buildHealthReport', () => {
     expect(report.timestamp).toBeDefined();
   });
 });
+
+describe('buildHealthReport network field', () => {
+  const base = {
+    xrplConnected: true,
+    lastLedgerIndex: 90000005,
+    lastKnownLedger: 90000000,
+    currentLedger: 90000005,
+    dbOk: true,
+    redisOk: true,
+    uptimeSeconds: 120,
+  };
+
+  it('includes network field in report', () => {
+    const report = buildHealthReport({ ...base, network: 'testnet' });
+    expect(report.network).toBe('testnet');
+  });
+
+  it('defaults network to mainnet when not provided', () => {
+    const report = buildHealthReport(base);
+    expect(report.network).toBe('mainnet');
+  });
+});

@@ -1,4 +1,4 @@
-const { buildFillMessage, buildTopKChangedMessage, CHANNELS, buildBridgeMessage } = require('../../src/redis/publisher');
+const { buildFillMessage, buildTopKChangedMessage, CHANNELS, buildBridgeMessage, buildNetworkChangeMessage } = require('../../src/redis/publisher');
 
 const fill = {
   txHash: 'AABB01',
@@ -121,5 +121,26 @@ describe('buildBridgeMessage', () => {
 
   it('is JSON-serialisable', () => {
     expect(() => JSON.stringify(buildBridgeMessage(bridge))).not.toThrow();
+  });
+});
+
+describe('CHANNELS.NETWORK', () => {
+  it('equals xrpl:network', () => {
+    expect(CHANNELS.NETWORK).toBe('xrpl:network');
+  });
+});
+
+describe('buildNetworkChangeMessage', () => {
+  it('sets type to network_change', () => {
+    expect(buildNetworkChangeMessage('testnet').type).toBe('network_change');
+  });
+
+  it('wraps network in data', () => {
+    const msg = buildNetworkChangeMessage('testnet');
+    expect(msg.data.network).toBe('testnet');
+  });
+
+  it('is JSON-serialisable', () => {
+    expect(() => JSON.stringify(buildNetworkChangeMessage('mainnet'))).not.toThrow();
   });
 });
