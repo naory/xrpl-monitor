@@ -8,7 +8,7 @@ function detectGap({ lastKnownLedger, currentLedger, threshold = GAP_THRESHOLD }
   return { hasGap: gapSize > threshold, gapSize };
 }
 
-function buildHealthReport({ xrplConnected, lastLedgerIndex, lastKnownLedger, currentLedger, dbOk, redisOk, uptimeSeconds }) {
+function buildHealthReport({ xrplConnected, lastLedgerIndex, lastKnownLedger, currentLedger, dbOk, redisOk, uptimeSeconds, network = 'mainnet' }) {
   const gap = detectGap({ lastKnownLedger, currentLedger });
 
   const checks = {
@@ -30,11 +30,12 @@ function buildHealthReport({ xrplConnected, lastLedgerIndex, lastKnownLedger, cu
     status: degraded ? 'degraded' : 'ok',
     timestamp: new Date().toISOString(),
     uptimeSeconds,
+    network,
     checks,
   };
 }
 
-function createHealthRouter({ state, pool, redis }) {
+function createHealthRouter({ state, pool, redis, xrplClient }) {
   const express = require('express');
   const router = express.Router();
 
@@ -60,6 +61,7 @@ function createHealthRouter({ state, pool, redis }) {
       dbOk,
       redisOk,
       uptimeSeconds: Math.floor(process.uptime()),
+      network: xrplClient?.getCurrentNetwork() ?? 'mainnet',
     });
 
     res.status(report.status === 'ok' ? 200 : 503).json(report);
