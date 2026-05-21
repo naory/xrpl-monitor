@@ -4,6 +4,7 @@ const CHANNELS = {
   BRIDGE:       'bridge:fill',
   XRP_DEMAND:   'xrpl:xrp-demand',
   ESCROW:       'xrpl:escrow',
+  NETWORK:      'xrpl:network',
   BOOK:         (pairKey) => `book:${pairKey}`,
 };
 
@@ -113,6 +114,18 @@ async function publishEscrow(redis, event) {
   await redis.publish(CHANNELS.ESCROW, msg);
 }
 
+function buildNetworkChangeMessage(network) {
+  return {
+    type: 'network_change',
+    data: { network },
+  };
+}
+
+async function publishNetworkChange(redis, network) {
+  const msg = JSON.stringify(buildNetworkChangeMessage(network));
+  await redis.publish(CHANNELS.NETWORK, msg);
+}
+
 module.exports = {
   CHANNELS,
   buildFillMessage,
@@ -120,9 +133,11 @@ module.exports = {
   buildBridgeMessage,
   buildXrpDemandMessage,
   buildEscrowMessage,
+  buildNetworkChangeMessage,
   publishFill,
   publishTopKChanged,
   publishBridge,
   publishXrpDemand,
   publishEscrow,
+  publishNetworkChange,
 };
