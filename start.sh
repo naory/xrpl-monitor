@@ -36,9 +36,10 @@ until docker exec xrpl_monitor_pg pg_isready -U xrpl -d xrpl_monitor -q 2>/dev/n
 done
 echo " ready."
 
-# Wait for Redis
+# Wait for Redis — use BF.EXISTS to confirm the BloomFilter module is loaded,
+# not just that the core server is up (redis-stack loads modules after PING responds).
 printf "[start] Waiting for Redis"
-until docker exec xrpl_monitor_redis redis-cli ping 2>/dev/null | grep -q PONG; do
+until docker exec xrpl_monitor_redis redis-cli bf.exists _healthcheck _ 2>/dev/null | grep -qE '^[01]$'; do
   printf "."; sleep 1
 done
 echo " ready."

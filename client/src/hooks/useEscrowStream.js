@@ -11,6 +11,12 @@ export function useEscrowStream(type) {
   });
 
   useEffect(() => {
+    seenRef.current = new Set();
+    setRecentEvents([]);
+    setStats({ creates: 0, finishes: 0, cancels: 0, xrpVolume: 0, successRate: null });
+  }, [type]);
+
+  useEffect(() => {
     const newItems = [];
 
     for (const event of [...escrowEvents].reverse()) {

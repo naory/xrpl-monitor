@@ -183,12 +183,12 @@ export function XrpDemandView() {
   };
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', p: 2, height: '100%', overflow: 'auto' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', p: 2 }}>
       <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 2, letterSpacing: 1, textTransform: 'uppercase', fontSize: '0.7rem' }}>
         Direct XRP Demand — {viewWindow === 'live' ? 'Live' : `Last ${viewWindow}`}
       </Typography>
 
-      <svg ref={svgRef} viewBox="0 0 480 480" style={{ width: 420, height: 420, flexShrink: 0 }}>
+      <svg ref={svgRef} viewBox="0 0 480 480" style={{ width: 280, height: 280, flexShrink: 0 }}>
         <defs>
           <radialGradient id="xdGlow" cx="50%" cy="50%" r="50%">
             <stop offset="0%" stopColor="#00a6cc" stopOpacity="0.25" />
@@ -293,12 +293,13 @@ export function XrpDemandView() {
       {/* Stats table */}
       {sortedStats.length > 0 && (
         <Box sx={{
-          width: 420, mt: 2,
+          width: '100%', mt: 2,
           border: '1px solid', borderColor: 'divider', borderRadius: 1, overflow: 'hidden',
         }}>
           <Box sx={{
             display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 50px',
             px: 2, py: 1, borderBottom: '1px solid', borderColor: 'divider',
+            bgcolor: 'background.paper',
           }}>
             {['Pair', 'XRP Bought', 'XRP Sold', 'Balance', 'Count'].map((h) => (
               <Typography key={h} variant="caption" sx={{ color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.8, fontSize: '0.6rem' }}>
@@ -306,36 +307,38 @@ export function XrpDemandView() {
               </Typography>
             ))}
           </Box>
-          {sortedStats.map(([id, v]) => {
-            const color = colorFor(id, ringCurrencies);
-            const balanceColor = v.balance > 0 ? 'success.main' : v.balance < 0 ? 'error.main' : 'text.secondary';
-            return (
-              <Box key={id} sx={{
-                display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 50px',
-                alignItems: 'center', px: 2, py: 0.8,
-                borderBottom: '1px solid', borderColor: 'divider',
-                '&:last-child': { borderBottom: 'none' },
-                '&:hover': { bgcolor: 'action.hover' },
-              }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: color, flexShrink: 0 }} />
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>XRP/{id}</Typography>
+          <Box sx={{ maxHeight: 260, overflowY: 'auto' }}>
+            {sortedStats.map(([id, v]) => {
+              const color = colorFor(id, ringCurrencies);
+              const balanceColor = v.balance > 0 ? 'success.main' : v.balance < 0 ? 'error.main' : 'text.secondary';
+              return (
+                <Box key={id} sx={{
+                  display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 50px',
+                  alignItems: 'center', px: 2, py: 0.8,
+                  borderBottom: '1px solid', borderColor: 'divider',
+                  '&:last-child': { borderBottom: 'none' },
+                  '&:hover': { bgcolor: 'action.hover' },
+                }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: color, flexShrink: 0 }} />
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>XRP/{id}</Typography>
+                  </Box>
+                  <Typography variant="body2" sx={{ color: 'success.main', fontVariantNumeric: 'tabular-nums', fontSize: '0.75rem' }}>
+                    {fmt(v.bought)}
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: 'error.main', fontVariantNumeric: 'tabular-nums', fontSize: '0.75rem' }}>
+                    {fmt(v.sold)}
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: balanceColor, fontVariantNumeric: 'tabular-nums', fontSize: '0.75rem' }}>
+                    {fmtBalance(v.balance)}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', textAlign: 'right' }}>
+                    {v.count}
+                  </Typography>
                 </Box>
-                <Typography variant="body2" sx={{ color: 'success.main', fontVariantNumeric: 'tabular-nums', fontSize: '0.75rem' }}>
-                  {fmt(v.bought)}
-                </Typography>
-                <Typography variant="body2" sx={{ color: 'error.main', fontVariantNumeric: 'tabular-nums', fontSize: '0.75rem' }}>
-                  {fmt(v.sold)}
-                </Typography>
-                <Typography variant="body2" sx={{ color: balanceColor, fontVariantNumeric: 'tabular-nums', fontSize: '0.75rem' }}>
-                  {fmtBalance(v.balance)}
-                </Typography>
-                <Typography variant="caption" sx={{ color: 'text.secondary', textAlign: 'right' }}>
-                  {v.count}
-                </Typography>
-              </Box>
-            );
-          })}
+              );
+            })}
+          </Box>
         </Box>
       )}
     </Box>

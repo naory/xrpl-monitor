@@ -210,12 +210,12 @@ export function BridgeView() {
     .sort((a, b) => (b[1].fromVolume + b[1].toVolume) - (a[1].fromVolume + a[1].toVolume));
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', p: 2, height: '100%', overflow: 'auto' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', p: 2 }}>
       <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 2, letterSpacing: 1, textTransform: 'uppercase', fontSize: '0.7rem' }}>
         XRP Bridge Utility — {viewWindow === 'live' ? 'Live' : `Last ${viewWindow}`}
       </Typography>
 
-      <svg ref={svgRef} viewBox="0 0 480 480" style={{ width: 420, height: 420, flexShrink: 0 }}>
+      <svg ref={svgRef} viewBox="0 0 480 480" style={{ width: 280, height: 280, flexShrink: 0 }}>
         <defs>
           <radialGradient id="xrpGlow" cx="50%" cy="50%" r="50%">
             <stop offset="0%" stopColor="#00a6cc" stopOpacity="0.25" />
@@ -329,12 +329,13 @@ export function BridgeView() {
       {/* Stats table */}
       {sortedStats.length > 0 && (
         <Box sx={{
-          width: 420, mt: 2,
+          width: '100%', mt: 2,
           border: '1px solid', borderColor: 'divider', borderRadius: 1, overflow: 'hidden',
         }}>
           <Box sx={{
             display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 60px',
             px: 2, py: 1, borderBottom: '1px solid', borderColor: 'divider',
+            bgcolor: 'background.paper',
           }}>
             {['Currency', '→ XRP (sold)', 'XRP → (bought)', 'Flows'].map((h) => (
               <Typography key={h} variant="caption" sx={{ color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.8, fontSize: '0.6rem' }}>
@@ -342,33 +343,35 @@ export function BridgeView() {
               </Typography>
             ))}
           </Box>
-          {sortedStats.map(([id, v]) => {
-            const color = colorFor(id, ringCurrencies);
-            const fmt = (n) => n > 0 ? n.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—';
-            return (
-              <Box key={id} sx={{
-                display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 60px',
-                alignItems: 'center', px: 2, py: 0.8,
-                borderBottom: '1px solid', borderColor: 'divider',
-                '&:last-child': { borderBottom: 'none' },
-                '&:hover': { bgcolor: 'action.hover' },
-              }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: color, flexShrink: 0 }} />
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{id}</Typography>
+          <Box sx={{ maxHeight: 260, overflowY: 'auto' }}>
+            {sortedStats.map(([id, v]) => {
+              const color = colorFor(id, ringCurrencies);
+              const fmt = (n) => n > 0 ? n.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—';
+              return (
+                <Box key={id} sx={{
+                  display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 60px',
+                  alignItems: 'center', px: 2, py: 0.8,
+                  borderBottom: '1px solid', borderColor: 'divider',
+                  '&:last-child': { borderBottom: 'none' },
+                  '&:hover': { bgcolor: 'action.hover' },
+                }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: color, flexShrink: 0 }} />
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{id}</Typography>
+                  </Box>
+                  <Typography variant="body2" sx={{ color: 'primary.main', fontVariantNumeric: 'tabular-nums', fontSize: '0.75rem' }}>
+                    {fmt(v.fromVolume)}
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: 'info.main', fontVariantNumeric: 'tabular-nums', fontSize: '0.75rem' }}>
+                    {fmt(v.toVolume)}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', textAlign: 'right' }}>
+                    {v.count}
+                  </Typography>
                 </Box>
-                <Typography variant="body2" sx={{ color: 'primary.main', fontVariantNumeric: 'tabular-nums', fontSize: '0.75rem' }}>
-                  {fmt(v.fromVolume)}
-                </Typography>
-                <Typography variant="body2" sx={{ color: 'info.main', fontVariantNumeric: 'tabular-nums', fontSize: '0.75rem' }}>
-                  {fmt(v.toVolume)}
-                </Typography>
-                <Typography variant="caption" sx={{ color: 'text.secondary', textAlign: 'right' }}>
-                  {v.count}
-                </Typography>
-              </Box>
-            );
-          })}
+              );
+            })}
+          </Box>
         </Box>
       )}
     </Box>

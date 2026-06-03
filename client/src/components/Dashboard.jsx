@@ -27,9 +27,13 @@ export function Dashboard({ mode, window }) {
 
   if (mode === 'xrp-flow') {
     return (
-      <Box sx={{ display: 'flex', flex: 1, justifyContent: 'center', alignItems: 'flex-start', gap: 1.5, p: 1.5, minHeight: 0, overflow: 'auto' }}>
-        <BridgeView />
-        <XrpDemandView />
+      <Box sx={{ display: 'flex', flex: 1, gap: 1.5, p: 1.5, minHeight: 0, overflow: 'hidden' }}>
+        <Box sx={{ flex: 1, minWidth: 0, overflow: 'auto', border: '1px solid', borderColor: 'divider', borderRadius: 1, bgcolor: 'background.paper' }}>
+          <BridgeView />
+        </Box>
+        <Box sx={{ flex: 1, minWidth: 0, overflow: 'auto', border: '1px solid', borderColor: 'divider', borderRadius: 1, bgcolor: 'background.paper' }}>
+          <XrpDemandView />
+        </Box>
       </Box>
     );
   }

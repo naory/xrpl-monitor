@@ -1,7 +1,7 @@
 const xrpl = require('xrpl');
 
 const XRPL_ENDPOINTS = {
-  mainnet: 'wss://s1.ripple.com/',
+  mainnet: 'wss://xrplcluster.com/',
   testnet: 'wss://s.altnet.rippletest.net:51233',
   devnet:  'wss://s.devnet.rippletest.net:51233',
 };

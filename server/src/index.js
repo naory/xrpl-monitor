@@ -13,9 +13,24 @@ const { createApp }               = require('./api/app');
 const { createWebSocketServer }   = require('./api/ws');
 const { bootstrapAmmPools }       = require('./ingest/ammBootstrap');
 
+async function connectRedis(maxAttempts = 5) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const client = createRedisClient();
+    try {
+      await client.connect();
+      return client;
+    } catch (err) {
+      await client.quit().catch(() => {});
+      if (attempt === maxAttempts) throw err;
+      const delay = attempt * 1000;
+      console.warn(`[Redis] Connect attempt ${attempt} failed (${err.message}), retrying in ${delay}ms...`);
+      await new Promise((r) => setTimeout(r, delay));
+    }
+  }
+}
+
 async function main() {
-  const redis = createRedisClient();
-  await redis.connect();
+  const redis = await connectRedis();
   console.log('[Redis] Connected');
 
   await ensureTopK(redis);
