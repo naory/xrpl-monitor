@@ -1,14 +1,18 @@
 const xrpl = require('xrpl');
 
 const XRPL_ENDPOINTS = {
-  mainnet: 'wss://xrplcluster.com/',
-  testnet: 'wss://s.altnet.rippletest.net:51233',
-  devnet:  'wss://s.devnet.rippletest.net:51233',
+  mainnet: [
+    'wss://xrplcluster.com/',
+    'wss://s1.ripple.com/',
+    'wss://s2.ripple.com/',
+  ],
+  testnet: ['wss://s.altnet.rippletest.net:51233'],
+  devnet:  ['wss://s.devnet.rippletest.net:51233'],
 };
 
-function resolveEndpoint() {
+function resolveEndpoints() {
   const net = process.env.XRPL_NET || 'mainnet';
-  if (net.startsWith('ws://') || net.startsWith('wss://')) return net;
+  if (net.startsWith('ws://') || net.startsWith('wss://')) return [net];
   return XRPL_ENDPOINTS[net] ?? XRPL_ENDPOINTS.mainnet;
 }
 
@@ -27,7 +31,8 @@ function normaliseLedgerClose(event) {
 }
 
 function createXrplConnection({ onTransaction, onLedgerClosed, onStateChange }) {
-  let url = resolveEndpoint();
+  let endpoints = resolveEndpoints();
+  let endpointIdx = 0;
   let currentNetworkName = resolveNetworkName();
   let client = null;
   let reconnectDelay = 1000;
@@ -37,6 +42,7 @@ function createXrplConnection({ onTransaction, onLedgerClosed, onStateChange }) 
 
   async function connect() {
     if (stopped) return;
+    const url = endpoints[endpointIdx % endpoints.length];
     client = new xrpl.Client(url);
 
     client.on('transaction', onTransaction);
@@ -58,7 +64,12 @@ function createXrplConnection({ onTransaction, onLedgerClosed, onStateChange }) 
       await client.request({ command: 'subscribe', streams: ['transactions', 'ledger'] });
       console.log('[XRPL] Subscribed to transactions and ledger streams');
     } catch (err) {
-      console.error('[XRPL] Connection failed:', err.message);
+      console.error(`[XRPL] Connection failed (${url}): ${err.message}`);
+      endpointIdx++;
+      if (endpoints.length > 1) {
+        const next = endpoints[endpointIdx % endpoints.length];
+        console.log(`[XRPL] Trying next endpoint: ${next}`);
+      }
       scheduleReconnect();
     }
   }
@@ -89,7 +100,8 @@ function createXrplConnection({ onTransaction, onLedgerClosed, onStateChange }) 
     switching = true;
     try {
       if (client?.isConnected()) await client.disconnect();
-      url = XRPL_ENDPOINTS[name];
+      endpoints = XRPL_ENDPOINTS[name];
+      endpointIdx = 0;
       currentNetworkName = name;
       reconnectDelay = 1000;
       await connect();
