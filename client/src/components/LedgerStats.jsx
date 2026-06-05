@@ -95,7 +95,7 @@ export function LedgerStats({ window }) {
         <StatCard
           label="TPS"
           value={s.tps.toFixed(2)}
-          sub={`${s.ledgerCount} ledgers`}
+          sub={`${s.ledgerCount} ledgers · last ${window}`}
           color="#00e5ff"
         />
         <StatCard
@@ -107,19 +107,19 @@ export function LedgerStats({ window }) {
         <StatCard
           label="Success Rate"
           value={s.successRate != null ? `${(s.successRate * 100).toFixed(1)}%` : '—'}
-          sub={`${fmt(s.failedCount, 0)} failed`}
+          sub={`${fmt(s.failedCount, 0)} failed · last ${window}`}
           color={s.successRate < 0.85 ? '#ff4081' : '#00e676'}
         />
         <StatCard
           label="Fee Burn"
           value={`${fmt(s.feeBurnXrp)} XRP`}
-          sub="destroyed"
+          sub={`destroyed · last ${window}`}
           color="#ffab40"
         />
         <StatCard
           label="Payment Vol"
           value={`${fmt(s.paymentXrp)} XRP`}
-          sub="via Payment txs"
+          sub={`via Payment txs · last ${window}`}
           color="#7c4dff"
         />
       </Box>

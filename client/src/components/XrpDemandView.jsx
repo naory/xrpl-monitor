@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Box, Typography, ToggleButton, ToggleButtonGroup } from '@mui/material';
+import { Box, Typography } from '@mui/material';
 import { useXrpDemandStream } from '../hooks/useXrpDemandStream';
 import { useXrpDemandHistory } from '../hooks/useXrpDemandHistory';
 
@@ -116,18 +116,23 @@ function DemandSparkline({ series, topCurrencies, ringCurrencies }) {
   );
 }
 
-export function XrpDemandView() {
+export function XrpDemandView({ window = 'live' }) {
   const { queue, setQueue, stats } = useXrpDemandStream();
   const svgRef = useRef(null);
   const [animating, setAnimating] = useState(false);
   const [ringCurrencies, setRingCurrencies] = useState([]);
-  const [viewWindow, setViewWindow] = useState('live');
 
-  const isLive = viewWindow === 'live';
-  const historyQuery = useXrpDemandHistory(isLive ? null : viewWindow);
+  const isLive = window === 'live';
+  const historyQuery = useXrpDemandHistory(isLive ? null : window);
   const historyData  = historyQuery.data;
 
   const activeStats = isLive ? stats : (historyData?.summary ?? EMPTY_STATS);
+
+  // Reset ring and animation queue when window changes
+  useEffect(() => {
+    setRingCurrencies([]);
+    setQueue([]);
+  }, [window]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     setRingCurrencies((prev) => {
@@ -185,7 +190,7 @@ export function XrpDemandView() {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', p: 2 }}>
       <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 2, letterSpacing: 1, textTransform: 'uppercase', fontSize: '0.7rem' }}>
-        Direct XRP Demand — {viewWindow === 'live' ? 'Live' : `Last ${viewWindow}`}
+        Direct XRP Demand — {isLive ? 'Live' : `Last ${window}`}
       </Typography>
 
       <svg ref={svgRef} viewBox="0 0 480 480" style={{ width: 280, height: 280, flexShrink: 0 }}>
@@ -257,27 +262,6 @@ export function XrpDemandView() {
         <text x={CX} y={CY + 13} textAnchor="middle" dominantBaseline="middle"
           fill="#4d9ab5" fontSize={9} fontWeight={500}>direct</text>
       </svg>
-
-      {/* Window selector */}
-      <ToggleButtonGroup
-        value={viewWindow}
-        exclusive
-        onChange={(_, v) => {
-          if (v) {
-            setViewWindow(v);
-            setRingCurrencies([]);
-            setQueue([]);
-          }
-        }}
-        size="small"
-        sx={{ mb: 2, mt: 1 }}
-      >
-        {['live', '10m', '1h', '24h'].map((w) => (
-          <ToggleButton key={w} value={w} sx={{ px: 2, fontSize: '0.7rem', textTransform: 'uppercase' }}>
-            {w}
-          </ToggleButton>
-        ))}
-      </ToggleButtonGroup>
 
       {/* Sparkline — historical mode only */}
       {!isLive && historyData && (

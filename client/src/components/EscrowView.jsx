@@ -1,5 +1,4 @@
-import { Box, Typography, ToggleButton, ToggleButtonGroup } from '@mui/material';
-import { useState } from 'react';
+import { Box, Typography } from '@mui/material';
 import { useEscrowStream }  from '../hooks/useEscrowStream';
 import { useEscrowHistory } from '../hooks/useEscrowHistory';
 
@@ -69,12 +68,11 @@ function TtfHistogram({ ttfBuckets }) {
   );
 }
 
-export function EscrowView({ type }) {
-  const [viewWindow, setViewWindow] = useState('live');
-  const isLive = viewWindow === 'live';
+export function EscrowView({ type, window = 'live' }) {
+  const isLive = window === 'live';
 
   const { recentEvents, stats: streamStats } = useEscrowStream(type);
-  const historyQuery = useEscrowHistory(isLive ? null : type, isLive ? null : viewWindow);
+  const historyQuery = useEscrowHistory(isLive ? null : type, isLive ? null : window);
   const histData     = historyQuery.data;
 
   const summary = isLive ? null : histData?.summary;
@@ -93,7 +91,7 @@ export function EscrowView({ type }) {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', p: 2, minWidth: 460, overflow: 'auto' }}>
       <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1.5, letterSpacing: 1, textTransform: 'uppercase', fontSize: '0.7rem' }}>
-        Escrow — {label} · {isLive ? 'Live' : `Last ${viewWindow}`}
+        Escrow — {label} · {isLive ? 'Live' : `Last ${window}`}
       </Typography>
 
       {/* KPI cards */}
@@ -110,14 +108,6 @@ export function EscrowView({ type }) {
           </Box>
         ))}
       </Box>
-
-      {/* Window selector */}
-      <ToggleButtonGroup value={viewWindow} exclusive size="small"
-        onChange={(_, v) => v && setViewWindow(v)} sx={{ mb: 1.5, height: 24 }}>
-        {['live', '10m', '1h', '24h'].map((w) => (
-          <ToggleButton key={w} value={w} sx={{ fontSize: '0.6rem', px: 1.2, py: 0 }}>{w}</ToggleButton>
-        ))}
-      </ToggleButtonGroup>
 
       {/* Stacked finish/cancel chart (historical only) */}
       {!isLive && (

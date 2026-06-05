@@ -16,11 +16,11 @@ const MODE_LABELS = {
   'escrow-time': 'ESCROW TIME',
   'escrow-ilp':  'ESCROW ILP',
 };
-const WINDOWS = ['10m', '1h', '24h'];
+const WINDOWS = ['live', '10m', '1h', '24h'];
 
 export function App() {
   const [mode,   setMode]   = useState('iou');
-  const [window, setWindow] = useState('1h');
+  const [window, setWindow] = useState('live');
 
   const [pendingNetwork, setPendingNetwork] = useState(null);
   const [networkError, setNetworkError]     = useState(false);

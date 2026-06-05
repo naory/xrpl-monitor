@@ -68,8 +68,15 @@ function createLedgerProcessor({ pool, redis, state, hysteresis, pairRegistry, x
       acc.feeBurnDrops += parseInt(event.tx_json.Fee ?? '0', 10) || 0;
       if (isSuccess) {
         acc.successCount++;
-        if (txType === 'Payment' && typeof event.tx_json.Amount === 'string') {
-          acc.paymentXrpDrops += parseInt(event.tx_json.Amount, 10) || 0;
+        if (txType === 'Payment') {
+          // API v2 uses DeliverMax instead of Amount; meta.delivered_amount is the
+          // most reliable source and handles partial payments correctly.
+          const rawAmt = event.meta?.delivered_amount
+            ?? event.tx_json.DeliverMax
+            ?? event.tx_json.Amount;
+          if (typeof rawAmt === 'string') {
+            acc.paymentXrpDrops += parseInt(rawAmt, 10) || 0;
+          }
         }
       } else {
         acc.failedCount++;
