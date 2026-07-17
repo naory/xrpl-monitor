@@ -3,7 +3,12 @@ import {
   BarChart, Bar, AreaChart, Area, XAxis, YAxis,
   Tooltip, ResponsiveContainer, Cell,
 } from 'recharts';
-import { useLedgerStats } from '../hooks/useLedgerStats';
+import { useLedgerStats }      from '../hooks/useLedgerStats';
+import { useStats }            from '../hooks/useStats';
+import { useAmmStats }         from '../hooks/useAmmStats';
+import { useBridgeHistory }    from '../hooks/useBridgeHistory';
+import { useXrpDemandHistory } from '../hooks/useXrpDemandHistory';
+import { useEscrowHistory }    from '../hooks/useEscrowHistory';
 
 function fmt(n, decimals = 2) {
   if (n == null || isNaN(n)) return '—';
@@ -48,6 +53,101 @@ const MiniTooltip = ({ active, payload, label: xLabel, formatter }) => {
     </Box>
   );
 };
+
+function MiniKpi({ label, value, sub, color }) {
+  return (
+    <Paper sx={{ flex: 1, minWidth: 0, p: 1.5, bgcolor: 'background.paper', border: '1px solid rgba(255,255,255,0.06)' }}>
+      <Typography sx={{ fontSize: '0.55rem', color: 'text.disabled', fontFamily: 'JetBrains Mono', letterSpacing: 1, textTransform: 'uppercase', mb: 0.5 }}>
+        {label}
+      </Typography>
+      <Typography sx={{ fontSize: '0.95rem', fontWeight: 700, fontFamily: 'JetBrains Mono', color, lineHeight: 1.1 }}>
+        {value}
+      </Typography>
+      {sub && (
+        <Typography sx={{ fontSize: '0.55rem', color: 'text.disabled', fontFamily: 'JetBrains Mono', mt: 0.25 }}>
+          {sub}
+        </Typography>
+      )}
+    </Paper>
+  );
+}
+
+function TabSummary({ window }) {
+  const iouQuery    = useStats(window);
+  const ammQuery    = useAmmStats(window);
+  const bridgeQuery = useBridgeHistory(window);
+  const xrpDemQuery = useXrpDemandHistory(window);
+  const escTimQuery = useEscrowHistory('time_lock', window);
+  const escIlpQuery = useEscrowHistory('ilp', window);
+
+  const iouVol   = iouQuery.data?.volumeLeaderboard?.reduce((s, p) => s + (p.volume ?? 0), 0) ?? null;
+  const iouPairs = iouQuery.data?.volumeLeaderboard?.length ?? null;
+
+  const ammVol    = ammQuery.data?.pools?.reduce((s, p) => s + (p.volume ?? 0), 0) ?? null;
+  const ammActive = ammQuery.data?.pools?.filter((p) => p.volume > 0).length ?? null;
+
+  const bridgeSummary = bridgeQuery.data?.summary ?? {};
+  const bridgeVol = Object.keys(bridgeSummary).length
+    ? Object.values(bridgeSummary).reduce((s, v) => s + (v.fromVolume ?? 0), 0)
+    : null;
+  const bridgeTop = bridgeQuery.data?.topCurrencies?.[0] ?? null;
+
+  const xrpSummary = xrpDemQuery.data?.summary ?? {};
+  const xrpVals   = Object.values(xrpSummary);
+  const xrpBought = xrpVals.length ? xrpVals.reduce((s, v) => s + (v.bought ?? 0), 0) : null;
+  const xrpSold   = xrpVals.length ? xrpVals.reduce((s, v) => s + (v.sold   ?? 0), 0) : null;
+  const xrpNet    = xrpBought != null ? xrpBought - xrpSold : null;
+
+  const escTim = escTimQuery.data?.summary;
+  const escIlp = escIlpQuery.data?.summary;
+
+  const cards = [
+    {
+      label: 'IOU TRADES',
+      value: iouVol   != null ? `${fmt(iouVol)} XRP`   : '—',
+      sub:   iouPairs != null ? `${iouPairs} active pairs` : null,
+      color: '#58a6ff',
+    },
+    {
+      label: 'AMM',
+      value: ammVol   != null ? `${fmt(ammVol)} XRP`   : '—',
+      sub:   ammActive != null ? `${ammActive} active pools` : null,
+      color: '#39d353',
+    },
+    {
+      label: 'BRIDGE',
+      value: bridgeVol != null ? `${fmt(bridgeVol)} XRP` : '—',
+      sub:   bridgeTop  ? `top: ${bridgeTop}`            : null,
+      color: '#ffa657',
+    },
+    {
+      label: 'XRP DEMAND',
+      value: xrpNet != null ? `${xrpNet >= 0 ? '+' : ''}${fmt(xrpNet)} XRP` : '—',
+      sub:   xrpBought != null ? `${fmt(xrpBought)} bought / ${fmt(xrpSold)} sold` : null,
+      color: xrpNet > 0 ? '#3fb950' : xrpNet < 0 ? '#f78166' : '#8b949e',
+    },
+    {
+      label: 'ESCROW TIME',
+      value: escTim?.successRate != null ? `${(escTim.successRate * 100).toFixed(1)}%` : '—',
+      sub:   escTim ? `${escTim.creates + escTim.finishes + escTim.cancels} txs` : null,
+      color: escTim?.successRate >= 0.7 ? '#3fb950' : '#ffa657',
+    },
+    {
+      label: 'ESCROW ILP',
+      value: escIlp?.successRate != null ? `${(escIlp.successRate * 100).toFixed(1)}%` : '—',
+      sub:   escIlp ? `${escIlp.creates + escIlp.finishes + escIlp.cancels} txs` : null,
+      color: escIlp?.successRate >= 0.7 ? '#3fb950' : '#ffa657',
+    },
+  ];
+
+  return (
+    <Box sx={{ display: 'flex', gap: 1.5, flexShrink: 0 }}>
+      {cards.map(({ label, value, sub, color }) => (
+        <MiniKpi key={label} label={label} value={value} sub={sub} color={color} />
+      ))}
+    </Box>
+  );
+}
 
 export function LedgerStats({ window }) {
   const { data, isLoading, isError } = useLedgerStats(window);
@@ -123,6 +223,9 @@ export function LedgerStats({ window }) {
           color="#7c4dff"
         />
       </Box>
+
+      {/* Tab KPI summary */}
+      <TabSummary window={window} />
 
       {/* Middle row: tx type chart + sparklines */}
       <Box sx={{ display: 'flex', gap: 1.5, flex: 1, minHeight: 0 }}>

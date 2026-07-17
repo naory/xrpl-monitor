@@ -10,7 +10,7 @@ import { Dashboard } from './components/Dashboard';
 const WS_URL = import.meta.env.VITE_WS_URL
   ?? `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws`;
 
-const MODES       = ['iou', 'mpt', 'amm', 'ledger', 'xrp-flow', 'escrow-time', 'escrow-ilp'];
+const MODES       = ['ledger', 'iou', 'mpt', 'amm', 'xrp-flow', 'escrow-time', 'escrow-ilp'];
 const MODE_LABELS = {
   'xrp-flow':    'XRP FLOW',
   'escrow-time': 'ESCROW TIME',
