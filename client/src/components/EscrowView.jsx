@@ -19,6 +19,11 @@ function fmtXrp(n) {
   return `${n.toFixed(0)} XRP`;
 }
 
+const xrpScan = {
+  account: (addr) => `https://xrpscan.com/account/${addr}`,
+  tx:      (hash) => `https://xrpscan.com/tx/${hash}`,
+};
+
 function fmtAddr(addr) {
   if (!addr) return '—';
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
@@ -142,13 +147,26 @@ export function EscrowView({ type, window = 'live' }) {
             const label2   = isFinish ? 'FINISH' : isCancel ? 'CANCEL' : 'CREATE';
             const ttf      = e.ttfMs != null ? ` ${(e.ttfMs / 1000).toFixed(1)}s` : '';
             const amount   = e.amountXrp ? ` ${parseFloat(e.amountXrp).toFixed(0)} XRP` : '';
-            const addr     = e.owner ? fmtAddr(e.owner) : fmtAddr(e.destination);
+            const rawAddr  = e.owner || e.destination;
+            const addr     = fmtAddr(rawAddr);
             return (
               <Box key={`${e.txHash}-${i}`} sx={{ display: 'flex', alignItems: 'center', gap: 0.5, py: 0.25, borderBottom: '1px solid', borderColor: 'divider' }}>
-                <Typography sx={{ fontSize: '0.65rem', color, fontWeight: 700, minWidth: 44 }}>{label2}</Typography>
+                <Typography sx={{ fontSize: '0.65rem', fontWeight: 700, minWidth: 44 }}>
+                  <a href={xrpScan.tx(e.txHash)} target="_blank" rel="noopener noreferrer"
+                    style={{ color, textDecoration: 'none' }} title={e.txHash}>
+                    {label2}
+                  </a>
+                </Typography>
                 {amount && <Typography sx={{ fontSize: '0.65rem', color: 'text.primary' }}>{amount}</Typography>}
                 {ttf    && <Typography sx={{ fontSize: '0.65rem', color: '#58a6ff' }}>{ttf}</Typography>}
-                <Typography sx={{ fontSize: '0.6rem', color: 'text.secondary', ml: 'auto' }}>{addr}</Typography>
+                <Typography sx={{ fontSize: '0.6rem', color: 'text.secondary', ml: 'auto' }}>
+                  {rawAddr ? (
+                    <a href={xrpScan.account(rawAddr)} target="_blank" rel="noopener noreferrer"
+                      style={{ color: 'inherit', textDecoration: 'none' }} title={rawAddr}>
+                      {addr}
+                    </a>
+                  ) : addr}
+                </Typography>
               </Box>
             );
           })}

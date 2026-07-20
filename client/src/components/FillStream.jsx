@@ -2,6 +2,11 @@ import { Box, Paper, Typography, Chip } from '@mui/material';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useWsStore } from '../store/useWsStore';
 
+const xrpScan = {
+  account: (addr) => `https://xrpscan.com/account/${addr}`,
+  tx:      (hash) => `https://xrpscan.com/tx/${hash}`,
+};
+
 function timeAgo(isoStr) {
   const delta = Math.floor((Date.now() - new Date(isoStr).getTime()) / 1000);
   if (delta < 60)   return `${delta}s ago`;
@@ -49,7 +54,11 @@ function FillCard({ fill }) {
         </Typography>
       </Box>
       <Typography variant="caption" color="text.secondary" sx={{ opacity: 0.5 }}>
-        {fill.account?.slice(0, 16)}…
+        <a href={xrpScan.account(fill.account)} target="_blank" rel="noopener noreferrer"
+          style={{ color: 'inherit', textDecoration: 'none' }}
+          title={fill.account}>
+          {fill.account?.slice(0, 16)}…
+        </a>
       </Typography>
     </Paper>
   );
