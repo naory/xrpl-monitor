@@ -30,6 +30,10 @@ function normaliseLedgerClose(event) {
   };
 }
 
+const PING_INTERVAL_MS   = 30_000;  // send keep-alive ping every 30s
+const WATCHDOG_INTERVAL_MS = 15_000; // check ledger health every 15s
+const LEDGER_TIMEOUT_MS    = 60_000; // reconnect if no ledger close in 60s
+
 function createXrplConnection({ onTransaction, onLedgerClosed, onStateChange }) {
   let endpoints = resolveEndpoints();
   let endpointIdx = 0;
@@ -39,6 +43,40 @@ function createXrplConnection({ onTransaction, onLedgerClosed, onStateChange }) 
   const MAX_DELAY = 30000;
   let stopped = false;
   let switching = false;
+  let pingTimer = null;
+  let watchdogTimer = null;
+  let lastLedgerAt = null;
+
+  function stopTimers() {
+    clearInterval(pingTimer);
+    clearInterval(watchdogTimer);
+    pingTimer = null;
+    watchdogTimer = null;
+  }
+
+  function startTimers() {
+    stopTimers();
+
+    pingTimer = setInterval(async () => {
+      if (!client?.isConnected()) return;
+      try {
+        await client.request({ command: 'ping' });
+      } catch {
+        // ping failure will trigger disconnect → scheduleReconnect
+      }
+    }, PING_INTERVAL_MS);
+
+    lastLedgerAt = Date.now();
+    watchdogTimer = setInterval(() => {
+      if (!client?.isConnected()) return;
+      const silent = Date.now() - lastLedgerAt;
+      if (silent > LEDGER_TIMEOUT_MS) {
+        console.warn(`[XRPL] No ledger close in ${silent / 1000}s — reconnecting`);
+        stopTimers();
+        client.disconnect().catch(() => {});
+      }
+    }, WATCHDOG_INTERVAL_MS);
+  }
 
   async function connect() {
     if (stopped) return;
@@ -46,8 +84,12 @@ function createXrplConnection({ onTransaction, onLedgerClosed, onStateChange }) 
     client = new xrpl.Client(url);
 
     client.on('transaction', onTransaction);
-    client.on('ledgerClosed', (raw) => onLedgerClosed(normaliseLedgerClose(raw)));
+    client.on('ledgerClosed', (raw) => {
+      lastLedgerAt = Date.now();
+      onLedgerClosed(normaliseLedgerClose(raw));
+    });
     client.on('disconnected', () => {
+      stopTimers();
       onStateChange({ connected: false });
       if (!stopped) scheduleReconnect();
     });
@@ -63,6 +105,7 @@ function createXrplConnection({ onTransaction, onLedgerClosed, onStateChange }) 
 
       await client.request({ command: 'subscribe', streams: ['transactions', 'ledger'] });
       console.log('[XRPL] Subscribed to transactions and ledger streams');
+      startTimers();
     } catch (err) {
       console.error(`[XRPL] Connection failed (${url}): ${err.message}`);
       endpointIdx++;
@@ -99,6 +142,7 @@ function createXrplConnection({ onTransaction, onLedgerClosed, onStateChange }) 
     }
     switching = true;
     try {
+      stopTimers();
       if (client?.isConnected()) await client.disconnect();
       endpoints = XRPL_ENDPOINTS[name];
       endpointIdx = 0;
@@ -158,6 +202,7 @@ function createXrplConnection({ onTransaction, onLedgerClosed, onStateChange }) 
 
   async function disconnect() {
     stopped = true;
+    stopTimers();
     if (client?.isConnected()) await client.disconnect();
   }
 
