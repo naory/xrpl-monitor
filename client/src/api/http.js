@@ -43,6 +43,22 @@ export function fetchEscrowBuckets(typeSlug, from, to) {
   return api.get(`/escrow/${typeSlug}/buckets`, { params: { from, to } }).then((r) => r.data);
 }
 
+export function fetchDomains(params) {
+  return api.get('/domains', { params }).then((r) => r.data);
+}
+
+export function fetchDomain(id) {
+  return api.get(`/domains/${id}`).then((r) => r.data);
+}
+
+export function fetchDexOffers(params) {
+  return api.get('/domains/dex', { params }).then((r) => r.data);
+}
+
+export function triggerDomainCrawl() {
+  return api.post('/domains/crawl').then((r) => r.data);
+}
+
 export function fetchCurrentNetwork() {
   return api.get('/network').then((r) => r.data);
 }

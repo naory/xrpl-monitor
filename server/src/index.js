@@ -12,6 +12,7 @@ const { PairRegistry }            = require('./ingest/pairRegistry');
 const { createApp }               = require('./api/app');
 const { createWebSocketServer }   = require('./api/ws');
 const { bootstrapAmmPools }       = require('./ingest/ammBootstrap');
+const { startDomainCrawler }      = require('./ingest/domainCrawler');
 
 async function connectRedis(maxAttempts = 5) {
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -74,7 +75,9 @@ async function main() {
 
   processor = createLedgerProcessor({ pool, redis, state, hysteresis, pairRegistry, xrplClient });
 
-  const app  = createApp({ pool, redis, state, xrplClient, pairRegistry });
+  const domainCrawler = startDomainCrawler(xrplClient, pool, redis, () => xrplClient.getCurrentNetwork());
+
+  const app  = createApp({ pool, redis, state, xrplClient, pairRegistry, domainCrawler });
   const port = process.env.PORT || 3001;
   const server = app.listen(port, () => {
     console.log(`[API] Listening on port ${port}`);
@@ -91,6 +94,7 @@ async function main() {
 
   async function shutdown() {
     console.log('[SHUTDOWN] Graceful shutdown...');
+    domainCrawler.stop();
     await xrplClient.disconnect();
     await closeWs();
     server.close();

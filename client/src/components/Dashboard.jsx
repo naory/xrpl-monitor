@@ -6,6 +6,7 @@ import { LedgerStats }   from './LedgerStats';
 import { BridgeView }    from './BridgeView';
 import { XrpDemandView } from './XrpDemandView';
 import { EscrowView }    from './EscrowView';
+import { DomainsView }   from './DomainsView';
 import { OrderBook }     from './OrderBook';
 import { PriceChart }    from './PriceChart';
 
@@ -53,6 +54,14 @@ export function Dashboard({ mode, window }) {
     return (
       <Box sx={{ display: 'flex', flex: 1, justifyContent: 'center', p: 1.5, minHeight: 0, overflow: 'auto' }}>
         <EscrowView key="ilp" type="ilp" window={window} />
+      </Box>
+    );
+  }
+
+  if (mode === 'domains') {
+    return (
+      <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden', border: '1px solid', borderColor: 'divider', borderRadius: 1, m: 1.5, bgcolor: 'background.paper' }}>
+        <DomainsView />
       </Box>
     );
   }

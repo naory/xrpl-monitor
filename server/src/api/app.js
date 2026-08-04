@@ -8,8 +8,9 @@ const { createBridgeRouter } = require('./bridge');
 const { createXrpDemandRouter } = require('./xrpDemand');
 const { createEscrowRouter }    = require('./escrow');
 const { createNetworkRouter }   = require('./network');
+const { createDomainsRouter }   = require('./domains');
 
-function createApp({ pool, redis, state, xrplClient, pairRegistry }) {
+function createApp({ pool, redis, state, xrplClient, pairRegistry, domainCrawler }) {
   const app = express();
   app.use(express.json());
 
@@ -22,6 +23,7 @@ function createApp({ pool, redis, state, xrplClient, pairRegistry }) {
   app.use('/xrp-demand', createXrpDemandRouter({ pool }));
   app.use('/escrow',     createEscrowRouter({ pool }));
   app.use('/network',    createNetworkRouter({ xrplClient, redis, state }));
+  app.use('/domains',    createDomainsRouter({ pool, xrplClient, crawler: domainCrawler }));
 
   return app;
 }

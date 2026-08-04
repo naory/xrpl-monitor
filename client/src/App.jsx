@@ -10,11 +10,12 @@ import { Dashboard } from './components/Dashboard';
 const WS_URL = import.meta.env.VITE_WS_URL
   ?? `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws`;
 
-const MODES       = ['ledger', 'iou', 'mpt', 'amm', 'xrp-flow', 'escrow-time', 'escrow-ilp'];
+const MODES       = ['ledger', 'iou', 'mpt', 'amm', 'xrp-flow', 'escrow-time', 'escrow-ilp', 'domains'];
 const MODE_LABELS = {
   'xrp-flow':    'XRP FLOW',
   'escrow-time': 'ESCROW TIME',
   'escrow-ilp':  'ESCROW ILP',
+  'domains':     'DOMAINS',
 };
 const WINDOWS = ['live', '10m', '1h', '24h'];
 

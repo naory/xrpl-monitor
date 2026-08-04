@@ -64,3 +64,31 @@ CREATE TABLE IF NOT EXISTS escrow_hourly (
     PRIMARY KEY (hour, type)
 );
 CREATE INDEX IF NOT EXISTS idx_escrow_hourly_hour ON escrow_hourly (hour);
+
+CREATE TABLE IF NOT EXISTS permissioned_domains (
+  index       TEXT NOT NULL,
+  network     TEXT NOT NULL,
+  owner       TEXT NOT NULL,
+  sequence    INT NOT NULL,
+  credentials JSONB NOT NULL DEFAULT '[]',
+  prev_txn_id TEXT,
+  crawled_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (index, network)
+);
+CREATE INDEX IF NOT EXISTS idx_pd_owner ON permissioned_domains (owner, network);
+
+CREATE TABLE IF NOT EXISTS permissioned_dex (
+  index       TEXT NOT NULL,
+  network     TEXT NOT NULL,
+  account     TEXT NOT NULL,
+  domain_id   TEXT NOT NULL,
+  taker_gets  JSONB NOT NULL,
+  taker_pays  JSONB NOT NULL,
+  flags       INT,
+  sequence    INT,
+  prev_txn_id TEXT,
+  crawled_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (index, network)
+);
+CREATE INDEX IF NOT EXISTS idx_pdex_domain_id ON permissioned_dex (domain_id, network);
+CREATE INDEX IF NOT EXISTS idx_pdex_account   ON permissioned_dex (account, network);
