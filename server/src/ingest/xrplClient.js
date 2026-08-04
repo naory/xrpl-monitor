@@ -2,11 +2,18 @@ const xrpl = require('xrpl');
 
 const XRPL_ENDPOINTS = {
   mainnet: [
-    'wss://xrplcluster.com/',
-    'wss://s1.ripple.com/',
-    'wss://s2.ripple.com/',
+    'wss://xrplcluster.com/',   // XRPL Foundation (Cloudflare-fronted)
+    'wss://xrpl.ws/',           // XRPL Labs
+    'wss://honeycluster.io/',   // Honeycluster
+    'wss://s1.ripple.com/',     // Ripple (general)
+    'wss://s2.ripple.com/',     // Ripple (full-history)
   ],
-  testnet: ['wss://s.altnet.rippletest.net:51233'],
+  testnet: [
+    'wss://s.altnet.rippletest.net:51233',
+    'wss://testnet.xrpl-labs.com/',
+    'wss://testnet.honeycluster.io/',
+    'wss://clio.altnet.rippletest.net:51233/',
+  ],
   devnet:  ['wss://s.devnet.rippletest.net:51233'],
 };
 
